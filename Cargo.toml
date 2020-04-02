@@ -1,5 +1,5 @@
 [package]
-name = "pka_db_backend"
+name = "pka_site_backend"
 version = "0.1.0"
 authors = ["Zak <zakmikellides@gmail.com>"]
 edition = "2018"

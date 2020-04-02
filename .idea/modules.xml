@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/pka_db_backend.iml" filepath="$PROJECT_DIR$/pka_db_backend.iml" />
+      <module fileurl="file://$PROJECT_DIR$/pka_site_backend.iml" filepath="$PROJECT_DIR$/pka_site_backend.iml" />
     </modules>
   </component>
 </project>
