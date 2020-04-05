@@ -106,8 +106,6 @@ impl<'a> YoutubeAPI<'a> {
 
 #[cfg(test)]
 mod tests {
-    use chrono::{Duration, NaiveDateTime};
-
     use super::*;
 
     #[test]
@@ -116,7 +114,7 @@ mod tests {
         let time = iso8601_duration::Duration::parse(&s)
             .expect("Failed to convert to iso8601")
             .to_std();
-        let time = Duration::from_std(time)
+        let time = chrono::Duration::from_std(time)
             .expect("Failed to read time")
             .num_seconds() as i16;
 
