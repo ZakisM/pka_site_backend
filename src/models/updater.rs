@@ -1,38 +1,4 @@
-use std::fmt;
-use std::str::FromStr;
-
-use serde::{de, Deserialize, Deserializer, Serialize};
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VideoDetailsRoot {
-    #[serde(with = "serde_with::json::nested")]
-    pub video_details: VideoDetails,
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct VideoDetails {
-    pub video_id: String,
-    pub title: String,
-    #[serde(deserialize_with = "any_from_str")]
-    pub length_seconds: i16,
-    pub short_description: String,
-    pub average_rating: f32,
-    #[serde(deserialize_with = "any_from_str")]
-    pub view_count: i32,
-    pub author: String,
-}
-
-fn any_from_str<'de, D, T>(deserializer: D) -> Result<T, D::Error>
-where
-    D: Deserializer<'de>,
-    T: FromStr,
-    <T as std::str::FromStr>::Err: fmt::Display,
-{
-    let s = <String>::deserialize(deserializer)?;
-    T::from_str(&s).map_err(de::Error::custom)
-}
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct EpisodesFileRoot {

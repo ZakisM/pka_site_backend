@@ -10,13 +10,17 @@ use crate::conduit::{pka_episode, pka_event, pka_youtube_details};
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
 use crate::models::updater::{EpisodesFileRoot, PkaInfoRoot};
-use crate::updater::pka::{extract_pka_episode_events, get_video_details, PKA_DESCRIPTIONS_FOLDER};
+use crate::updater::pka::{extract_pka_episode_events, PKA_DESCRIPTIONS_FOLDER};
+use crate::updater::youtube_api::YoutubeAPI;
+use crate::YT_API_KEY;
 use crate::{Repo, Result};
 
 // Only used initially to store episodes in DB from external source.
 
 #[allow(dead_code)]
-pub async fn add_all_pka_youtube_details(state: &Repo, client: &Client) -> Result<()> {
+pub async fn add_all_pka_youtube_details(state: &Repo) -> Result<()> {
+    let yt_api = YoutubeAPI::new(&YT_API_KEY);
+
     let all_episodes = pka_episode::all(state).await?;
 
     let all_details = pka_youtube_details::all(state).await?;
@@ -33,37 +37,31 @@ pub async fn add_all_pka_youtube_details(state: &Repo, client: &Client) -> Resul
         .collect::<Vec<PkaEpisode>>();
 
     let bodies = stream::iter(missing)
-        .map(move |ep| async move {
-            let res = client
-                .get(&ep.youtube_link())
-                .send()
-                .await
-                .expect("Failed to send youtube request");
-            (res, ep)
+        .map(|ep| async {
+            let yt_api_data = yt_api.get_video_details(&ep.youtube_endpoint()).await;
+            (yt_api_data, ep)
         })
         .buffer_unordered(7);
 
-    let fut = bodies.for_each_concurrent(7, |(res, ep)| async move {
-        let data = String::from_utf8(res.bytes().await.expect("Failed to read response").to_vec())
-            .expect("Failed to convert response to string");
-        let details = get_video_details(&data);
+    let fut = bodies.for_each_concurrent(7, |(yt_api_data, ep)| async move {
+        match yt_api_data {
+            Ok(yt_api_data) => {
+                let youtube_details = PkaYoutubeDetails::new(
+                    yt_api_data.id,
+                    ep.number(),
+                    yt_api_data.snippet.title,
+                    yt_api_data.content_details.duration,
+                );
 
-        if let Ok(details) = details {
-            let details = details.video_details;
-
-            let db_details = PkaYoutubeDetails::new(
-                details.video_id,
+                if let Err(e) = pka_youtube_details::insert(state, youtube_details).await {
+                    error!("{}", e);
+                };
+            }
+            Err(e) => error!(
+                "Error downloading video details for: {} - {}",
                 ep.number(),
-                details.title,
-                details.length_seconds,
-                details.average_rating,
-            );
-
-            if let Err(e) = pka_youtube_details::insert(state, db_details).await {
-                error!("{}", e);
-            };
-        } else {
-            println!("Failed to download details for PKA: {}", ep.number())
+                e
+            ),
         }
     });
 
@@ -205,7 +203,9 @@ pub async fn download_all_pka_episodes_timelines_pka_info(
 }
 
 #[allow(dead_code)]
-pub async fn download_all_pka_episode_descriptions(state: &Repo, client: &Client) -> Result<()> {
+pub async fn download_all_pka_episode_descriptions(state: &Repo) -> Result<()> {
+    let yt_api = YoutubeAPI::new(&YT_API_KEY);
+
     let mut all_episodes = pka_episode::all(state).await?;
 
     let dir_name = Path::new(PKA_DESCRIPTIONS_FOLDER);
@@ -229,22 +229,14 @@ pub async fn download_all_pka_episode_descriptions(state: &Repo, client: &Client
     }
 
     let bodies = stream::iter(all_episodes)
-        .map(move |ep| async move {
-            let res = client
-                .get(&ep.youtube_link())
-                .send()
-                .await
-                .expect("Failed to send youtube request");
-            (res, ep)
+        .map(|ep| async {
+            let yt_api_data = yt_api.get_video_details(&ep.youtube_endpoint()).await;
+            (yt_api_data, ep)
         })
-        .buffer_unordered(7);
+        .buffer_unordered(5);
 
-    let fut = bodies.for_each_concurrent(7, |(res, ep)| async move {
-        let data = String::from_utf8(res.bytes().await.expect("Failed to read response").to_vec())
-            .expect("Failed to convert response to string");
-        let details = get_video_details(&data);
-
-        if let Ok(details) = details {
+    let fut = bodies.for_each_concurrent(5, |(yt_api_data, ep)| async move {
+        if let Ok(yt_api_data) = yt_api_data {
             let mut file = File::create(format!(
                 "{}/{}.txt",
                 dir_name
@@ -255,7 +247,7 @@ pub async fn download_all_pka_episode_descriptions(state: &Repo, client: &Client
             .await
             .expect("Failed to create file");
 
-            file.write_all(details.video_details.short_description.as_bytes())
+            file.write_all(yt_api_data.snippet.description.as_bytes())
                 .await
                 .expect("Failed to write description to file");
 

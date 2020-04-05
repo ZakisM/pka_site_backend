@@ -7,6 +7,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 
+use std::env;
 use std::sync::Arc;
 
 use diesel::SqliteConnection;
@@ -32,6 +33,11 @@ mod updater;
 type Result<T> = std::result::Result<T, ApiError>;
 type Repo = db::SqDatabase<SqliteConnection>;
 type StateFilter = BoxedFilter<(Arc<Repo>,)>;
+
+lazy_static! {
+    static ref YT_API_KEY: String =
+        env::var("YT_API_KEY").expect("Youtube API key required to start.");
+}
 
 #[tokio::main]
 async fn main() {

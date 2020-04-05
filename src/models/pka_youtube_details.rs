@@ -15,23 +15,15 @@ pub struct PkaYoutubeDetails {
     episode_number: DieselF32,
     title: String,
     length_seconds: i16,
-    average_rating: DieselF32,
 }
 
 impl PkaYoutubeDetails {
-    pub fn new(
-        video_id: String,
-        episode_number: f32,
-        title: String,
-        length_seconds: i16,
-        average_rating: f32,
-    ) -> Self {
+    pub fn new(video_id: String, episode_number: f32, title: String, length_seconds: i16) -> Self {
         PkaYoutubeDetails {
             video_id,
             episode_number: DieselF32(episode_number),
             title,
             length_seconds,
-            average_rating: DieselF32(average_rating),
         }
     }
 
