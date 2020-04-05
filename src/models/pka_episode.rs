@@ -5,7 +5,6 @@ use serde::Serialize;
 
 use crate::models::diesel_f32::DieselF32;
 use crate::schema::pka_episode;
-use crate::updater::pka::YOUTUBE_WATCH_URL;
 
 #[derive(Debug, Serialize, Insertable, Queryable, Identifiable)]
 #[serde(rename_all = "camelCase")]
@@ -39,10 +38,6 @@ impl PkaEpisode {
 
     pub fn youtube_endpoint(&self) -> &str {
         self.youtube_link.as_str()
-    }
-
-    pub fn youtube_link(&self) -> String {
-        format!("{}{}", YOUTUBE_WATCH_URL, self.youtube_link)
     }
 }
 

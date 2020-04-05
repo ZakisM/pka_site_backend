@@ -11,11 +11,12 @@ use crate::models::errors::ApiError;
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
-use crate::models::updater::VideoDetailsRoot;
+use crate::updater::youtube_api::YoutubeAPI;
+use crate::YT_API_KEY;
 use crate::{Repo, Result};
 
-pub const YOUTUBE_WATCH_URL: &str = "https://www.youtube.com/watch?v=";
 pub const PKA_DESCRIPTIONS_FOLDER: &str = "PKA-Descriptions";
+
 const WOODY_YOUTUBE_RSA_FEED: &str =
     "https://www.youtube.com/feeds/videos.xml?channel_id=UCIPVJoHb_A5S3kcv3TJlyEg";
 
@@ -55,17 +56,16 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
         .find(|e| e.title.as_ref().unwrap().content.contains(&latest_episode))
         .map(|e| {
             (
-                format!("{}{}", YOUTUBE_WATCH_URL, e.id.replace("yt:video:", "")),
+                e.id.replace("yt:video:", ""),
                 e.published.unwrap().timestamp(),
             )
         })
         .ok_or_else(|| ApiError::new("Couldn't find episode", StatusCode::NOT_FOUND))?;
 
     // Extract data from youtube_link
-    let res = client.get(&youtube_link).send().await?;
-    let data = String::from_utf8(res.bytes().await?.to_vec())?;
+    let yt_api = YoutubeAPI::new(&YT_API_KEY);
 
-    let details = get_video_details(&data)?.video_details;
+    let details = yt_api.get_video_details(&youtube_link).await?;
 
     let pka_ep = PkaEpisode::new(
         latest_episode_number,
@@ -74,16 +74,13 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
         uploaded,
     );
 
-    let description = details.short_description;
-
-    let events = extract_pka_episode_events(latest_episode_number, &description)?;
+    let events = extract_pka_episode_events(latest_episode_number, &details.snippet.description)?;
 
     let youtube_details = PkaYoutubeDetails::new(
-        details.video_id,
+        details.id,
         latest_episode_number,
-        details.title,
-        details.length_seconds,
-        details.average_rating,
+        details.snippet.title,
+        details.content_details.duration,
     );
 
     info!("Extracted video details.");
@@ -103,30 +100,6 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
     }
 
     Ok(())
-}
-
-pub fn get_video_details(data: &str) -> Result<VideoDetailsRoot> {
-    lazy_static! {
-        static ref DESCRIPTION_REGEX: Regex =
-            Regex::new(r#"(\\"videoDetails\\":\{.+),\\"isLiveContent"#)
-                .expect("Failed to create DESCRIPTION_REGEX.");
-    }
-
-    let captures = DESCRIPTION_REGEX
-        .captures(data)
-        .ok_or_else(|| ApiError::new_internal_error("Couldn't find DESCRIPTION_REGEX captures"))?;
-
-    let details_string = captures
-        .get(1)
-        .ok_or_else(|| ApiError::new_internal_error("Couldn't find details_string"))?;
-
-    let details_string = details_string
-        .as_str()
-        .replace(r#"\"videoDetails\":{"#, r#""videoDetails":"{"#);
-
-    let details_string = format!("{{{}}}\"}}", details_string);
-
-    Ok(serde_json::from_str::<VideoDetailsRoot>(&details_string)?)
 }
 
 pub fn extract_pka_episode_events(ep_number: f32, data: &str) -> Result<Vec<PkaEvent>> {

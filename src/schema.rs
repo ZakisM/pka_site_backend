@@ -29,7 +29,6 @@ table! {
         episode_number -> Float,
         title -> Text,
         length_seconds -> SmallInt,
-        average_rating -> Float,
     }
 }
 
