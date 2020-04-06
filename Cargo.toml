@@ -19,7 +19,6 @@ lazy_static = "1.4"
 futures = "0.3"
 diesel = { version = "1", features = ["r2d2", "sqlite", "chrono", "extras"] }
 chrono = { version = "0.4", features = ["serde"] }
-strsim = "0.10"
 float-ord = "0.2"
 reqwest = "0.10"
 regex = "1"

@@ -8,17 +8,6 @@ fn path_prefix() -> BoxedFilter<()> {
     main_prefix().and(warp::path!("pka_episode" / ..)).boxed()
 }
 
-fn all_pka_episodes_r(
-    state: StateFilter,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    path_prefix()
-        .and(warp::path("all"))
-        .and(warp::get())
-        .and(state)
-        .and_then(handlers::episode::all_pka_episodes)
-        .boxed()
-}
-
 fn watch_pka_episode_r(
     state: StateFilter,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -46,7 +35,5 @@ pub fn episode_routes(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let state_c = || state.clone();
 
-    all_pka_episodes_r(state_c())
-        .or(watch_pka_episode_r(state_c()))
-        .or(latest_pka_episode_r(state_c()))
+    watch_pka_episode_r(state_c()).or(latest_pka_episode_r(state_c()))
 }

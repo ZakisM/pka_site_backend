@@ -3,6 +3,7 @@ use serde::Serialize;
 use crate::models::diesel_f32::DieselF32;
 use crate::models::pka_episode::PkaEpisode;
 use crate::schema::pka_event;
+use crate::search::pka_search::Searchable;
 
 #[derive(Debug, Serialize, Insertable, Queryable, Associations, Identifiable)]
 #[serde(rename_all = "camelCase")]
@@ -42,5 +43,11 @@ impl PkaEvent {
 
     pub fn description(&self) -> &str {
         self.description.as_str()
+    }
+}
+
+impl Searchable for PkaEvent {
+    fn field_to_match(&self) -> &str {
+        self.description()
     }
 }

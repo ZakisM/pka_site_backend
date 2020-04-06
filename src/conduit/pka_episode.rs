@@ -5,8 +5,11 @@ use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
+use crate::models::search::PkaEpisodeSearchResult;
 use crate::schema::pka_episode::dsl::*;
 use crate::schema::pka_event::columns::timestamp;
+use crate::schema::pka_youtube_details::columns::title;
+use crate::schema::pka_youtube_details::dsl::pka_youtube_details;
 use crate::{schema, Repo};
 
 pub async fn all(repo: &Repo) -> Result<Vec<PkaEpisode>, Error> {
@@ -24,6 +27,19 @@ pub async fn latest(repo: &Repo) -> Result<f32, Error> {
             .select(number)
             .order_by(number.desc())
             .first::<f32>(&conn)
+    })
+    .await
+}
+
+pub async fn all_with_yt_details(repo: &Repo) -> Result<Vec<PkaEpisodeSearchResult>, Error> {
+    repo.run(move |conn| {
+        let all_episodes: Vec<PkaEpisodeSearchResult> = pka_episode
+            .order_by(number.desc())
+            .inner_join(pka_youtube_details)
+            .select((number, upload_date, title))
+            .load(&conn)?;
+
+        Ok(all_episodes)
     })
     .await
 }
