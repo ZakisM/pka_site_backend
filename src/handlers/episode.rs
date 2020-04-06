@@ -8,13 +8,6 @@ use crate::models::errors::ApiError;
 use crate::models::success_response::SuccessResponse;
 use crate::Repo;
 
-pub async fn all_pka_episodes(state: Arc<Repo>) -> Result<impl warp::Reply, Infallible> {
-    match pka_episode::all(&state).await {
-        Ok(res) => Ok(SuccessResponse::new(res).into_response()),
-        Err(e) => Ok(ApiError::from(e).into_response()),
-    }
-}
-
 pub async fn watch_pka_episode(
     number: f32,
     state: Arc<Repo>,
