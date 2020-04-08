@@ -11,16 +11,20 @@ use std::env;
 use std::sync::Arc;
 
 use diesel::SqliteConnection;
+use tokio::sync::RwLock;
 use warp::filters::BoxedFilter;
 use warp::Filter;
 
+use crate::conduit::pka_event;
 use crate::db::SqDatabase;
 use crate::handlers::errors::handle_rejection;
 use crate::models::errors::ApiError;
+use crate::models::pka_event::PkaEvent;
 use crate::routes::episode::episode_routes;
 use crate::routes::front_end::front_end_routes;
 use crate::routes::search::search_routes;
-use crate::updater::pka::spawn_get_latest_worker;
+use crate::workers::events::update_events;
+use crate::workers::new_episode::latest_episode;
 
 mod conduit;
 mod db;
@@ -30,6 +34,7 @@ mod routes;
 mod schema;
 mod search;
 mod updater;
+mod workers;
 
 type Result<T> = std::result::Result<T, ApiError>;
 type Repo = db::SqDatabase<SqliteConnection>;
@@ -38,6 +43,7 @@ type StateFilter = BoxedFilter<(Arc<Repo>,)>;
 lazy_static! {
     static ref YT_API_KEY: String =
         env::var("YT_API_KEY").expect("Youtube API key required to start.");
+    static ref ALL_PKA_EVENTS: Arc<RwLock<Vec<PkaEvent>>> = Arc::new(RwLock::new(Vec::new()));
 }
 
 #[tokio::main]
@@ -52,9 +58,14 @@ async fn main() {
 
     let state: Arc<Repo> = Arc::new(SqDatabase::new("./pka_db.sqlite3"));
 
-    let worker_state = state.clone();
+    *ALL_PKA_EVENTS.write().await = pka_event::all(&state)
+        .await
+        .expect("Failed to add all PKA events");
 
-    tokio::task::spawn(spawn_get_latest_worker(worker_state));
+    let worker_state = || state.clone();
+
+    tokio::task::spawn(latest_episode(worker_state()));
+    tokio::task::spawn(update_events(worker_state()));
 
     let state_filter: StateFilter = warp::any().map(move || state.clone()).boxed();
 

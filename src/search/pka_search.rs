@@ -1,9 +1,10 @@
 use regex::Regex;
 use reqwest::StatusCode;
 
-use crate::conduit::{pka_episode, pka_event};
+use crate::conduit::pka_episode;
 use crate::models::errors::ApiError;
 use crate::models::search::{PkaEpisodeSearchResult, PkaEventSearchResult};
+use crate::ALL_PKA_EVENTS;
 use crate::{Repo, Result};
 
 pub trait Searchable {
@@ -22,13 +23,13 @@ pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<PkaEpisodeS
     }
 }
 
-pub async fn search_events(state: &Repo, query: &str) -> Result<Vec<PkaEventSearchResult>> {
+pub async fn search_events(query: &str) -> Result<Vec<PkaEventSearchResult>> {
     let query = query.trim();
 
     if query.len() > 2 {
-        let all_events = pka_event::all(state).await?;
+        let all_events = ALL_PKA_EVENTS.read().await;
 
-        search(query, all_events)
+        search(query, all_events.to_vec())
     } else {
         Ok(Vec::new())
     }
