@@ -6,9 +6,9 @@ use serde::{de, Deserialize, Deserializer, Serialize};
 
 use crate::models::errors::ApiError;
 use crate::Result;
+use crate::YT_API_KEY;
 
-pub struct YoutubeAPI<'a> {
-    key: &'a str,
+pub struct YoutubeAPI {
     client: Client,
 }
 
@@ -68,11 +68,11 @@ impl fmt::Display for Part {
     }
 }
 
-impl<'a> YoutubeAPI<'a> {
-    pub fn new(key: &'a str) -> Self {
+impl YoutubeAPI {
+    pub fn new() -> Self {
         let client = Client::new();
 
-        YoutubeAPI { key, client }
+        YoutubeAPI { client }
     }
 
     pub async fn get_video_details(&self, video_id: &str) -> Result<YoutubeAPIData> {
@@ -89,7 +89,9 @@ impl<'a> YoutubeAPI<'a> {
 
         let endpoint = format!(
             "https://www.googleapis.com/youtube/v3/videos?part={}&id={}&key={}",
-            part, video_id, self.key
+            part,
+            video_id,
+            *YT_API_KEY.read().await
         );
 
         let res = self.client.get(&endpoint).send().await?;

@@ -41,14 +41,17 @@ type Repo = db::SqDatabase<SqliteConnection>;
 type StateFilter = BoxedFilter<(Arc<Repo>,)>;
 
 lazy_static! {
-    static ref YT_API_KEY: String =
-        env::var("YT_API_KEY").expect("Youtube API key required to start.");
+    static ref YT_API_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));
     static ref ALL_PKA_EVENTS: Arc<RwLock<Vec<PkaEvent>>> = Arc::new(RwLock::new(Vec::new()));
 }
 
 #[tokio::main]
 async fn main() {
+    env::set_var("RUST_LOG", "INFO");
+
     pretty_env_logger::init_timed();
+
+    *YT_API_KEY.write().await = env::var("YT_API_KEY").expect("Youtube API key required to start.");
 
     let front_end = warp::get()
         .and(warp::path::end())

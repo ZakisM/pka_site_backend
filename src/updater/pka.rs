@@ -8,7 +8,6 @@ use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
 use crate::updater::youtube_api::YoutubeAPI;
-use crate::YT_API_KEY;
 use crate::{Repo, Result};
 
 pub const PKA_DESCRIPTIONS_FOLDER: &str = "PKA-Descriptions";
@@ -44,7 +43,7 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
         .ok_or_else(|| ApiError::new("Couldn't find episode", StatusCode::NOT_FOUND))?;
 
     // Extract data from youtube_link
-    let yt_api = YoutubeAPI::new(&YT_API_KEY);
+    let yt_api = YoutubeAPI::new();
 
     let details = yt_api.get_video_details(&youtube_link).await?;
 
