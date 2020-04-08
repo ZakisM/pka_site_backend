@@ -14,7 +14,8 @@ where
 {
     pub fn new(database_url: &str) -> Self {
         let manager = ConnectionManager::new(database_url);
-        let pool = r2d2::Builder::default()
+        let pool = r2d2::Builder::new()
+            .max_size(15)
             .build(manager)
             .expect("Failed to build connection pool for database.");
 

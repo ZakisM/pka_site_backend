@@ -1,3 +1,6 @@
+use std::cmp::Ordering;
+
+use float_ord::FloatOrd;
 use serde::Serialize;
 
 use crate::models::diesel_f32::DieselF32;
@@ -51,3 +54,23 @@ impl Searchable for PkaEvent {
         self.description()
     }
 }
+
+impl std::cmp::Ord for PkaEvent {
+    fn cmp(&self, other: &Self) -> Ordering {
+        FloatOrd(self.episode_number.0).cmp(&FloatOrd(other.episode_number.0))
+    }
+}
+
+impl std::cmp::PartialOrd for PkaEvent {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        FloatOrd(self.episode_number.0).partial_cmp(&FloatOrd(other.episode_number.0))
+    }
+}
+
+impl std::cmp::PartialEq for PkaEvent {
+    fn eq(&self, other: &Self) -> bool {
+        FloatOrd(self.episode_number.0).eq(&FloatOrd(other.episode_number.0))
+    }
+}
+
+impl std::cmp::Eq for PkaEvent {}

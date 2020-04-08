@@ -18,6 +18,7 @@ use crate::db::SqDatabase;
 use crate::handlers::errors::handle_rejection;
 use crate::models::errors::ApiError;
 use crate::routes::episode::episode_routes;
+use crate::routes::front_end::front_end_routes;
 use crate::routes::search::search_routes;
 use crate::updater::pka::spawn_get_latest_worker;
 
@@ -43,6 +44,12 @@ lazy_static! {
 async fn main() {
     pretty_env_logger::init_timed();
 
+    let front_end = warp::get()
+        .and(warp::path::end())
+        .and(warp::fs::file("./front-end/index.html"));
+
+    let resources = warp::fs::dir("./front-end/");
+
     let state: Arc<Repo> = Arc::new(SqDatabase::new("./pka_db.sqlite3"));
 
     let worker_state = state.clone();
@@ -54,15 +61,17 @@ async fn main() {
     let state_c = || state_filter.clone();
 
     let cors = warp::cors()
-        .allow_any_origin()
         .allow_methods(vec!["GET", "POST"])
         .allow_headers(vec!["authorization", "content-type"])
         .allow_credentials(true);
 
-    let api = search_routes(state_c())
-        .or(episode_routes(state_c()))
+    let api = front_end
+        .or(resources)
+        .or(front_end_routes())
+        .or(search_routes(state_c()).or(episode_routes(state_c())))
         .with(cors)
+        .with(warp::compression::gzip())
         .recover(handle_rejection);
 
-    warp::serve(api).run(([0, 0, 0, 0], 3030)).await;
+    warp::serve(api).run(([0, 0, 0, 0], 80)).await;
 }
