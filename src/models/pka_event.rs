@@ -5,7 +5,7 @@ use crate::models::pka_episode::PkaEpisode;
 use crate::schema::pka_event;
 use crate::search::pka_search::Searchable;
 
-#[derive(Debug, Serialize, Insertable, Queryable, Associations, Identifiable)]
+#[derive(Clone, Debug, Serialize, Insertable, Queryable, Associations, Identifiable)]
 #[serde(rename_all = "camelCase")]
 #[primary_key(event_id)]
 #[belongs_to(PkaEpisode, foreign_key = "episode_number")]

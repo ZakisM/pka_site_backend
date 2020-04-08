@@ -1,10 +1,6 @@
-use std::sync::Arc;
-
 use chrono::{NaiveTime, Timelike};
 use regex::Regex;
 use reqwest::{Client, StatusCode};
-use tokio::time;
-use tokio::time::Duration;
 
 use crate::conduit::{pka_episode, pka_event, pka_youtube_details};
 use crate::models::errors::ApiError;
@@ -19,21 +15,6 @@ pub const PKA_DESCRIPTIONS_FOLDER: &str = "PKA-Descriptions";
 
 const WOODY_YOUTUBE_RSA_FEED: &str =
     "https://www.youtube.com/feeds/videos.xml?channel_id=UCIPVJoHb_A5S3kcv3TJlyEg";
-
-pub async fn spawn_get_latest_worker(state: Arc<Repo>) {
-    loop {
-        info!("Checking for latest episode...");
-
-        if let Err(e) = get_latest_pka_episode_data(&state).await {
-            error!("get_latest_worker error: {}", e);
-        } else {
-            info!("Successfully added latest episode");
-        }
-
-        //Check once every 24 hours.
-        time::delay_for(Duration::from_secs(86400)).await;
-    }
-}
 
 pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
     let latest_episode_number = pka_episode::latest(state).await? + 1.0;

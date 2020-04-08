@@ -21,11 +21,8 @@ pub async fn search_pka_episode(
     }
 }
 
-pub async fn search_pka_event(
-    sq: SearchQuery,
-    state: Arc<Repo>,
-) -> Result<impl warp::Reply, Infallible> {
-    match search_events(&state, &sq.query).await {
+pub async fn search_pka_event(sq: SearchQuery) -> Result<impl warp::Reply, Infallible> {
+    match search_events(&sq.query).await {
         Ok(res) => Ok(SuccessResponse::new(res).into_response()),
         Err(e) => {
             // Should return Err once improves in Warp;

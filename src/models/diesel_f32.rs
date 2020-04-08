@@ -3,7 +3,7 @@ use std::hash::Hasher;
 use float_ord::FloatOrd;
 use serde::Serialize;
 
-#[derive(DieselNewType, Debug, Serialize)]
+#[derive(Clone, DieselNewType, Debug, Serialize)]
 pub struct DieselF32(pub f32);
 
 impl std::hash::Hash for DieselF32 {
