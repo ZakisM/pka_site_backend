@@ -1,38 +1,33 @@
-# select build image
-FROM rust as build
+FROM ekidd/rust-musl-builder:latest as build
 
-# create a new empty shell project
-RUN USER=root cargo new --bin pka_site_backend
 WORKDIR /pka_site_backend
 
+USER root
+
+RUN chown -R rust:rust /pka_site_backend
+
+USER rust
+
 # copy over manifests
-COPY ./Cargo.lock ./Cargo.lock
-COPY ./Cargo.toml ./Cargo.toml
+ADD --chown=rust:rust ./Cargo.lock ./Cargo.lock
+ADD --chown=rust:rust ./Cargo.toml ./Cargo.toml
 
-# this build step will cache dependencies
-RUN cargo build --release
-RUN rm src/*.rs
+ADD --chown=rust:rust ./src ./src
 
-# copy source tree
-COPY ./src ./src
-
-# build for release
-RUN rm ./target/release/deps/pka_site_backend*
 RUN cargo build --release
 
-# copy front-end
-COPY ./front-end ./front-end
+ADD --chown=rust:rust ./front-end ./front-end
 
-# copy database items
-COPY pka_db.sqlite3 pka_db.sqlite3
+ADD --chown=rust:rust pka_db.sqlite3 pka_db.sqlite3
 
-# for optimizing image size
-FROM rust
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
 
 WORKDIR /pka_site_backend
 
 # copy build artifact from previous stage
-COPY --from=build /pka_site_backend/target/release/pka_site_backend .
+COPY --from=build /pka_site_backend/target/x86_64-unknown-linux-musl/release/pka_site_backend .
 COPY --from=build /pka_site_backend/front-end ./front-end
 COPY --from=build /pka_site_backend/pka_db.sqlite3 .
 
