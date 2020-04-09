@@ -24,11 +24,11 @@ jobs:
           tags: latest
       - name: Deploy and Run Docker image on Server
         uses: appleboy/ssh-action@v0.0.2
-          with:
-            host: ${{ secrets.HOST }}
-            username: ${{ secrets.USERNAME }}
-            password: ${{ secrets.PASSWORD }}
-            port: ${{ secrets.PORT }}
-            script: |
-              ./update.sh
-              ./run.sh
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          script: |
+            ./update.sh
+            ./run.sh
