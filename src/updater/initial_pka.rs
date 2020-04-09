@@ -12,14 +12,13 @@ use crate::models::pka_youtube_details::PkaYoutubeDetails;
 use crate::models::updater::{EpisodesFileRoot, PkaInfoRoot};
 use crate::updater::pka::{extract_pka_episode_events, PKA_DESCRIPTIONS_FOLDER};
 use crate::updater::youtube_api::YoutubeAPI;
-use crate::YT_API_KEY;
 use crate::{Repo, Result};
 
 // Only used initially to store episodes in DB from external source.
 
 #[allow(dead_code)]
 pub async fn add_all_pka_youtube_details(state: &Repo) -> Result<()> {
-    let yt_api = YoutubeAPI::new(&YT_API_KEY);
+    let yt_api = YoutubeAPI::new();
 
     let all_episodes = pka_episode::all(state).await?;
 
@@ -204,7 +203,7 @@ pub async fn download_all_pka_episodes_timelines_pka_info(
 
 #[allow(dead_code)]
 pub async fn download_all_pka_episode_descriptions(state: &Repo) -> Result<()> {
-    let yt_api = YoutubeAPI::new(&YT_API_KEY);
+    let yt_api = YoutubeAPI::new();
 
     let mut all_episodes = pka_episode::all(state).await?;
 
