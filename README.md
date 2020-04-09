@@ -1,3 +1,5 @@
+![Rust](https://github.com/ZakisM/pka_site_backend/workflows/Rust/badge.svg)
+
 # pka_site_backend
 Download rust: https://rustup.rs/
 Install Diesel CLI for making changes to DB: https://github.com/diesel-rs/diesel/tree/master/diesel_cli
