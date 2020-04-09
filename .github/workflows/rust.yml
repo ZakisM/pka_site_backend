@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v2
       - name: Build Docker image and push to private Docker Repo
       - uses: docker/build-push-action@v1
         with:
