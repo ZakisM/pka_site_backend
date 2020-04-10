@@ -1,8 +1,6 @@
-use regex::Regex;
-use reqwest::StatusCode;
+use regex::RegexSetBuilder;
 
 use crate::conduit::pka_episode;
-use crate::models::errors::ApiError;
 use crate::models::search::{PkaEpisodeSearchResult, PkaEventSearchResult};
 use crate::ALL_PKA_EVENTS;
 use crate::{Repo, Result};
@@ -17,7 +15,7 @@ pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<PkaEpisodeS
     let all_episodes = pka_episode::all_with_yt_details(&state).await?;
 
     if query != "" {
-        search(query, all_episodes)
+        search(query, &all_episodes)
     } else {
         Ok(all_episodes)
     }
@@ -29,46 +27,39 @@ pub async fn search_events(query: &str) -> Result<Vec<PkaEventSearchResult>> {
     if query.len() > 2 {
         let all_events = ALL_PKA_EVENTS.read().await;
 
-        search(query, all_events.to_vec())
+        search(query, &*all_events)
     } else {
         Ok(Vec::new())
     }
 }
 
-fn search<T, R>(query: &str, items: Vec<T>) -> Result<Vec<R>>
+fn search<T, R>(query: &str, items: &[T]) -> Result<Vec<R>>
 where
-    T: Searchable,
+    T: Searchable + Clone,
     R: std::cmp::Ord + From<T>,
 {
-    let all_regex = regex_from_query(query)?;
+    let queries = query
+        .split(' ')
+        .map(|q| regex::escape(q))
+        .collect::<Vec<String>>();
 
-    let mut results = Vec::new();
+    let all_regex_new = RegexSetBuilder::new(&queries)
+        .case_insensitive(true)
+        .build()?;
 
-    for item in items.into_iter() {
-        let mut found = true;
-
-        all_regex.iter().for_each(|r| {
-            if !r.is_match(item.field_to_match()) {
-                found = false;
-                return;
-            }
-        });
-
-        if found {
-            results.push(R::from(item));
-        }
-    }
+    let mut results: Vec<R> = items
+        .iter()
+        .filter(|i| {
+            all_regex_new
+                .matches(i.field_to_match())
+                .iter()
+                .count()
+                == queries.len()
+        })
+        .map(|res| R::from(res.to_owned()))
+        .collect();
 
     results.sort();
 
     Ok(results)
-}
-
-// using a regex that ignores case is ~50% quicker than calling to_lowercase in a loop.
-fn regex_from_query(query: &str) -> Result<Vec<Regex>> {
-    Ok(query
-        .split(' ')
-        .map(|q| Regex::new(format!("(?i){}", regex::escape(q)).as_str()))
-        .collect::<std::result::Result<Vec<Regex>, _>>()
-        .map_err(|_| ApiError::new("Invalid search!", StatusCode::BAD_REQUEST))?)
 }
