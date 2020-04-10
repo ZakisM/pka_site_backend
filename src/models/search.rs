@@ -50,7 +50,7 @@ impl std::cmp::PartialEq for PkaEventSearchResult {
 
 impl std::cmp::Eq for PkaEventSearchResult {}
 
-#[derive(Debug, Serialize, Queryable)]
+#[derive(Clone, Debug, Serialize, Queryable)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaEpisodeSearchResult {
     episode_number: f32,

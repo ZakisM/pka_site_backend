@@ -84,7 +84,6 @@ async fn main() {
         .or(front_end_routes())
         .or(search_routes(state_c()).or(episode_routes(state_c())))
         .with(cors)
-        .with(warp::compression::gzip())
         .recover(handle_rejection);
 
     warp::serve(api).run(([0, 0, 0, 0], 1234)).await;
