@@ -90,7 +90,7 @@ where
         .iter()
         .filter(|(ids, _)| {
             for q in &queries {
-                if !ids.contains(q) {
+                if !ids.iter().any(|i| i.contains(q)) {
                     return false;
                 }
             }
