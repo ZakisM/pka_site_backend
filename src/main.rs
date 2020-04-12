@@ -7,6 +7,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 
+use std::collections::HashSet;
 use std::env;
 use std::sync::Arc;
 
@@ -24,6 +25,7 @@ use crate::redis_db::RedisDb;
 use crate::routes::episode::episode_routes;
 use crate::routes::front_end::front_end_routes;
 use crate::routes::search::search_routes;
+use crate::search::pka_search::create_index;
 use crate::workers::events::update_events;
 use crate::workers::new_episode::latest_episode;
 
@@ -42,10 +44,11 @@ type Result<T> = std::result::Result<T, ApiError>;
 type Repo = db::SqDatabase<SqliteConnection>;
 type StateFilter = BoxedFilter<(Arc<Repo>,)>;
 type RedisFilter = BoxedFilter<(Arc<RedisDb>,)>;
+type EventIndexType = Arc<RwLock<Vec<(HashSet<String>, PkaEvent)>>>;
 
 lazy_static! {
     static ref YT_API_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));
-    static ref ALL_PKA_EVENTS: Arc<RwLock<Vec<PkaEvent>>> = Arc::new(RwLock::new(Vec::new()));
+    static ref PKA_EVENTS_INDEX: EventIndexType = Arc::new(RwLock::new(Vec::new()));
 }
 
 #[tokio::main]
@@ -72,9 +75,11 @@ async fn main() {
 
     *YT_API_KEY.write().await = env::var("YT_API_KEY").expect("Youtube API key required to start.");
 
-    *ALL_PKA_EVENTS.write().await = pka_event::all(&state)
-        .await
-        .expect("Failed to add all PKA events");
+    *PKA_EVENTS_INDEX.write().await = create_index(
+        pka_event::all(&state)
+            .await
+            .expect("Failed to add all PKA events"),
+    );
 
     // workers
     let worker_state = || state.clone();

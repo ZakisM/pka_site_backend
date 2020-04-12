@@ -1,10 +1,12 @@
-use regex::RegexSetBuilder;
+use std::collections::HashSet;
+
+use regex::{Regex, RegexSetBuilder};
 
 use crate::conduit::redis::event_cache;
 use crate::conduit::sqlite::pka_episode;
 use crate::models::search::{PkaEpisodeSearchResult, PkaEventSearchResult};
 use crate::redis_db::RedisDb;
-use crate::ALL_PKA_EVENTS;
+use crate::PKA_EVENTS_INDEX;
 use crate::{Repo, Result};
 
 pub trait Searchable {
@@ -32,9 +34,9 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<PkaEventS
         match event_cache::get(&redis, redis_tag, query.to_owned()).await {
             Ok(results) => Ok(results),
             Err(_) => {
-                let all_events = ALL_PKA_EVENTS.read().await;
+                let all_events = PKA_EVENTS_INDEX.read().await;
 
-                let results = search(query, &*all_events)?;
+                let results = search_index(query, &*all_events)?;
 
                 event_cache::set(&redis, redis_tag, query.to_owned(), results.to_vec()).await?;
 
@@ -44,6 +46,63 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<PkaEventS
     } else {
         Ok(Vec::new())
     }
+}
+
+pub fn create_index<T>(items: Vec<T>) -> Vec<(HashSet<String>, T)>
+where
+    T: Searchable,
+{
+    lazy_static! {
+        static ref WORD_REGEX: Regex = Regex::new(r"(\w+)").expect("Failed to create WORD_REGEX.");
+    }
+
+    items
+        .into_iter()
+        .map(|evt| {
+            let mut searchable_terms: HashSet<String> = HashSet::new();
+
+            for cap in WORD_REGEX.captures_iter(evt.field_to_match()) {
+                for c in cap.iter() {
+                    searchable_terms.insert(
+                        c.expect("Failed to extract word to create index")
+                            .as_str()
+                            .to_lowercase(),
+                    );
+                }
+            }
+
+            (searchable_terms, evt)
+        })
+        .collect()
+}
+
+fn search_index<T, R>(query: &str, index: &[(HashSet<String>, T)]) -> Result<Vec<R>>
+where
+    T: Searchable + Clone,
+    R: std::cmp::Ord + From<T>,
+{
+    let queries = query
+        .split(' ')
+        .map(|q| q.to_lowercase())
+        .collect::<Vec<String>>();
+
+    let mut results: Vec<R> = index
+        .iter()
+        .filter(|(ids, _)| {
+            for q in &queries {
+                if !ids.contains(q) {
+                    return false;
+                }
+            }
+
+            true
+        })
+        .map(|(_, evt)| R::from(evt.to_owned()))
+        .collect();
+
+    results.sort();
+
+    Ok(results)
 }
 
 fn search<T, R>(query: &str, items: &[T]) -> Result<Vec<R>>

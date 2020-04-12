@@ -4,8 +4,9 @@ use tokio::time;
 use tokio::time::Duration;
 
 use crate::conduit::sqlite::pka_event;
+use crate::search::pka_search::create_index;
 use crate::Repo;
-use crate::ALL_PKA_EVENTS;
+use crate::PKA_EVENTS_INDEX;
 
 pub async fn update_events(state: Arc<Repo>) {
     loop {
@@ -13,7 +14,7 @@ pub async fn update_events(state: Arc<Repo>) {
 
         match pka_event::all(&state).await {
             Ok(events) => {
-                *ALL_PKA_EVENTS.write().await = events;
+                *PKA_EVENTS_INDEX.write().await = create_index(events);
             }
             Err(e) => error!("get_latest_worker error: {}", e),
         }
