@@ -6,7 +6,7 @@ use reqwest::{Client, Url};
 use tokio::fs::{self, File};
 use tokio::io::AsyncWriteExt;
 
-use crate::conduit::{pka_episode, pka_event, pka_youtube_details};
+use crate::conduit::sqlite::{pka_episode, pka_event, pka_youtube_details};
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
 use crate::models::updater::{EpisodesFileRoot, PkaInfoRoot};

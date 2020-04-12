@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::time;
 use tokio::time::Duration;
 
-use crate::conduit::pka_event;
+use crate::conduit::sqlite::pka_event;
 use crate::Repo;
 use crate::ALL_PKA_EVENTS;
 

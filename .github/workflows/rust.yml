@@ -30,5 +30,4 @@ jobs:
           password: ${{ secrets.PASSWORD }}
           port: ${{ secrets.PORT }}
           script: |
-            ./update.sh
-            ./run.sh
+            ./update_new.sh

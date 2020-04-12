@@ -12,7 +12,7 @@ pub struct SearchQuery {
     pub query: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaEventSearchResult {
     episode_number: f32,

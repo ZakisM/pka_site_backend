@@ -110,3 +110,9 @@ impl From<std::string::FromUtf8Error> for ApiError {
         ApiError::new(utfe.to_string(), StatusCode::INTERNAL_SERVER_ERROR)
     }
 }
+
+impl From<redis::RedisError> for ApiError {
+    fn from(rede: redis::RedisError) -> Self {
+        ApiError::new(rede.to_string(), StatusCode::INTERNAL_SERVER_ERROR)
+    }
+}

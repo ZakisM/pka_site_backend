@@ -2,7 +2,7 @@ use chrono::{NaiveTime, Timelike};
 use regex::Regex;
 use reqwest::{Client, StatusCode};
 
-use crate::conduit::{pka_episode, pka_event, pka_youtube_details};
+use crate::conduit::sqlite::{pka_episode, pka_event, pka_youtube_details};
 use crate::models::errors::ApiError;
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_event::PkaEvent;

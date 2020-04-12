@@ -15,11 +15,12 @@ use tokio::sync::RwLock;
 use warp::filters::BoxedFilter;
 use warp::Filter;
 
-use crate::conduit::pka_event;
+use crate::conduit::sqlite::pka_event;
 use crate::db::SqDatabase;
 use crate::handlers::errors::handle_rejection;
 use crate::models::errors::ApiError;
 use crate::models::pka_event::PkaEvent;
+use crate::redis_db::RedisDb;
 use crate::routes::episode::episode_routes;
 use crate::routes::front_end::front_end_routes;
 use crate::routes::search::search_routes;
@@ -30,6 +31,7 @@ mod conduit;
 mod db;
 mod handlers;
 mod models;
+mod redis_db;
 mod routes;
 mod schema;
 mod search;
@@ -39,6 +41,7 @@ mod workers;
 type Result<T> = std::result::Result<T, ApiError>;
 type Repo = db::SqDatabase<SqliteConnection>;
 type StateFilter = BoxedFilter<(Arc<Repo>,)>;
+type RedisFilter = BoxedFilter<(Arc<RedisDb>,)>;
 
 lazy_static! {
     static ref YT_API_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));
@@ -51,28 +54,39 @@ async fn main() {
 
     pretty_env_logger::init_timed();
 
-    *YT_API_KEY.write().await = env::var("YT_API_KEY").expect("Youtube API key required to start.");
-
+    // UI and static resources
     let front_end = warp::get()
         .and(warp::path::end())
         .and(warp::fs::file("./front-end/index.html"));
 
     let resources = warp::fs::dir("./front-end/");
 
+    // DB and Redis
+    let redis_client: Arc<RedisDb> = Arc::new(
+        RedisDb::new("redis://redis:6379")
+            .await
+            .expect("Failed to connect to redis."),
+    );
+
     let state: Arc<Repo> = Arc::new(SqDatabase::new("./pka_db.sqlite3"));
+
+    *YT_API_KEY.write().await = env::var("YT_API_KEY").expect("Youtube API key required to start.");
 
     *ALL_PKA_EVENTS.write().await = pka_event::all(&state)
         .await
         .expect("Failed to add all PKA events");
 
+    // workers
     let worker_state = || state.clone();
 
     tokio::task::spawn(latest_episode(worker_state()));
     tokio::task::spawn(update_events(worker_state()));
 
     let state_filter: StateFilter = warp::any().map(move || state.clone()).boxed();
+    let redis_filter: RedisFilter = warp::any().map(move || redis_client.clone()).boxed();
 
     let state_c = || state_filter.clone();
+    let redis_c = || redis_filter.clone();
 
     let cors = warp::cors()
         .allow_methods(vec!["GET", "POST"])
@@ -82,7 +96,7 @@ async fn main() {
     let api = front_end
         .or(resources)
         .or(front_end_routes())
-        .or(search_routes(state_c()).or(episode_routes(state_c())))
+        .or(search_routes(state_c(), redis_c()).or(episode_routes(state_c())))
         .with(cors)
         .recover(handle_rejection);
 
