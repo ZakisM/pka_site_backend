@@ -2,7 +2,7 @@ use warp::Filter;
 
 use crate::models::search::SearchQuery;
 use crate::routes::path_prefix;
-use crate::{handlers, StateFilter};
+use crate::{handlers, RedisFilter, StateFilter};
 
 fn search_pka_episode_r(
     state: StateFilter,
@@ -17,21 +17,25 @@ fn search_pka_episode_r(
         .boxed()
 }
 
-fn search_pka_event_r() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
-{
+fn search_pka_event_r(
+    redis: RedisFilter,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     path_prefix()
         .and(warp::path("search_pka_event"))
         .and(warp::post())
         .and(warp::body::content_length_limit(64))
         .and(warp::body::json::<SearchQuery>())
+        .and(redis)
         .and_then(handlers::search::search_pka_event)
         .boxed()
 }
 
 pub fn search_routes(
     state: StateFilter,
+    redis: RedisFilter,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let state_c = || state.clone();
+    let redis_c = || redis.clone();
 
-    search_pka_episode_r(state_c()).or(search_pka_event_r())
+    search_pka_episode_r(state_c()).or(search_pka_event_r(redis_c()))
 }

@@ -108,8 +108,6 @@ impl YoutubeAPI {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn duration_to_seconds() {
         let s = "PT4M13S";

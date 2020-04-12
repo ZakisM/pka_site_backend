@@ -1,7 +1,9 @@
 use regex::RegexSetBuilder;
 
-use crate::conduit::pka_episode;
+use crate::conduit::redis::event_cache;
+use crate::conduit::sqlite::pka_episode;
 use crate::models::search::{PkaEpisodeSearchResult, PkaEventSearchResult};
+use crate::redis_db::RedisDb;
 use crate::ALL_PKA_EVENTS;
 use crate::{Repo, Result};
 
@@ -21,13 +23,24 @@ pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<PkaEpisodeS
     }
 }
 
-pub async fn search_events(query: &str) -> Result<Vec<PkaEventSearchResult>> {
+pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<PkaEventSearchResult>> {
     let query = query.trim();
 
-    if query.len() > 2 {
-        let all_events = ALL_PKA_EVENTS.read().await;
+    let redis_tag = "EVENTS";
 
-        search(query, &*all_events)
+    if query.len() > 2 {
+        match event_cache::get(&redis, redis_tag, query.to_owned()).await {
+            Ok(results) => Ok(results),
+            Err(_) => {
+                let all_events = ALL_PKA_EVENTS.read().await;
+
+                let results = search(query, &*all_events)?;
+
+                event_cache::set(&redis, redis_tag, query.to_owned(), results.to_vec()).await?;
+
+                Ok(results)
+            }
+        }
     } else {
         Ok(Vec::new())
     }
@@ -49,13 +62,7 @@ where
 
     let mut results: Vec<R> = items
         .iter()
-        .filter(|i| {
-            all_regex_new
-                .matches(i.field_to_match())
-                .iter()
-                .count()
-                == queries.len()
-        })
+        .filter(|i| all_regex_new.matches(i.field_to_match()).iter().count() == queries.len())
         .map(|res| R::from(res.to_owned()))
         .collect();
 
