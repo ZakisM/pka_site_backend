@@ -1,4 +1,4 @@
-![Rust](https://github.com/ZakisM/pka_site_backend/workflows/Rust/badge.svg)
+![Build and Test](https://github.com/ZakisM/pka_site_backend/workflows/Build%20and%20Test/badge.svg)
 
 # PKA Index Backend
 
