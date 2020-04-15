@@ -4,6 +4,7 @@ on:
   pull_request:
     paths-ignore:
       - 'README.md'
+      - 'nginx.conf'
     branches: [ master ]
 
 jobs:
