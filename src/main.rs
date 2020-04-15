@@ -93,7 +93,6 @@ async fn main() {
     let redis_c = || redis_filter.clone();
 
     let cors = warp::cors()
-        .allow_origins(vec!["http://0.0.0.0:5678", "http://0.0.0.0:3000"])
         .allow_methods(vec!["GET", "POST"])
         .allow_headers(vec!["authorization", "content-type"])
         .allow_credentials(true);
