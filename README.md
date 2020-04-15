@@ -19,11 +19,12 @@ To run locally:
 6. Modify `nginx.conf` from this project and replace the lines that have `YOUR_SELF_SIGNED_KEY_DIRECTORY` with the folder you created in the previous step. i.e `/Users/zak/Desktop/selfsigned/`
 7. Install `nginx` and modify `/etc/nginx/nginx.conf` on your machine, so it is the same as `nginx.conf` that you just modified from this project.
 8. Start `nginx`.
-9. Run the rust server
+9. Generate Youtube API key from https://console.developers.google.com/ and save as env variable named: YT_API_KEY. Can pass empty string if you want however this means episodes won't be updated.
+10. Run the rust server
     - To run in debug mode: run `cargo run` from project root. 
     - To run in release (optimized) mode: run `cargo run --release` from project root. 
-10. Rust should now be serving an API from http://0.0.0.0:1234.
-11. Visit https://pkaindextest.com in your browser. (Firefox will work but for Chrome you will need to import the Self Signed SSL certificate manually.)
+11. Rust should now be serving an API from http://0.0.0.0:1234.
+12. Visit https://pkaindextest.com in your browser. (Firefox will work but for Chrome you will need to import the Self Signed SSL certificate manually.)
 
 #### Test With Docker - Note this is creating an optimized build so not suitable for development.
 1. `docker build -t zakism/pka-index-backend:latest .`
