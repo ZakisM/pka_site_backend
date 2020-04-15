@@ -22,7 +22,6 @@ To run locally:
 9. Run the rust server
     - To run in debug mode: run `cargo run` from project root. 
     - To run in release (optimized) mode: run `cargo run --release` from project root. 
-    - To check for errors (quicker than running): run `cargo check` from project root.
 10. Rust should now be serving an API from http://0.0.0.0:1234.
 11. Visit https://pkaindextest.com in your browser. (Firefox will work but for Chrome you will need to import the Self Signed SSL certificate manually.)
 
