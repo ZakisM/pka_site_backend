@@ -9,7 +9,7 @@ To run locally:
 #### To develop/test
 1. Download rust: https://rustup.rs/.
 2. (Optional) Install Diesel CLI for making changes to DB (You will need to install sqlite3 even if you skip this step): https://github.com/diesel-rs/diesel/tree/master/diesel_cli
-3. Download and install `redis`. Make sure `redis-server` is running on port `6379`.
+3. Download and install `redis`. Make sure `redis-server` is running on its default port `6379`.
 4. Modify your hosts file and add the following entries if they aren't there already:
    - 127.0.0.1   redis
    - 0.0.0.0 pkaindextest.com
