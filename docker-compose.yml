@@ -2,13 +2,19 @@ version: '3'
 
 services:
   app:
-    image: zakism/painkiller-already-index:latest
+    image: zakism/pka-index-backend:latest
     depends_on:
       - redis
     environment:
       - YT_API_KEY=$YT_API_KEY
     ports:
       - 127.0.0.1:1234:1234
+    restart: always
+
+  react-frontend:
+    image: zakism/pka-index-frontend:latest
+    ports:
+      - 127.0.0.1:5678:5678
     restart: always
 
   redis:

@@ -23,7 +23,6 @@ use crate::models::errors::ApiError;
 use crate::models::pka_event::PkaEvent;
 use crate::redis_db::RedisDb;
 use crate::routes::episode::episode_routes;
-use crate::routes::front_end::front_end_routes;
 use crate::routes::search::search_routes;
 use crate::search::pka_search::create_index;
 use crate::workers::events::update_events;
@@ -94,13 +93,13 @@ async fn main() {
     let redis_c = || redis_filter.clone();
 
     let cors = warp::cors()
+        .allow_origins(vec!["http://0.0.0.0:5678", "http://0.0.0.0:3000"])
         .allow_methods(vec!["GET", "POST"])
         .allow_headers(vec!["authorization", "content-type"])
         .allow_credentials(true);
 
     let api = front_end
         .or(resources)
-        .or(front_end_routes())
         .or(search_routes(state_c(), redis_c()).or(episode_routes(state_c())))
         .with(cors)
         .recover(handle_rejection);
