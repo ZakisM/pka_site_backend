@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Deploy
 
 on:
   push:
@@ -20,14 +20,14 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          repository: zakism/painkiller-already-index
+          repository: zakism/pka-index-backend
           tags: latest
-      - name: Deploy and Run Docker image on Server
-        uses: appleboy/ssh-action@v0.0.7
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
-          port: ${{ secrets.PORT }}
-          script: |
-            ./update_new.sh
+#      - name: Deploy and Run Docker image on Server
+#        uses: appleboy/ssh-action@v0.0.7
+#        with:
+#          host: ${{ secrets.HOST }}
+#          username: ${{ secrets.USERNAME }}
+#          password: ${{ secrets.PASSWORD }}
+#          port: ${{ secrets.PORT }}
+#          script: |
+#            ./update_new.sh
