@@ -56,13 +56,6 @@ async fn main() {
 
     pretty_env_logger::init_timed();
 
-    // UI and static resources
-    let front_end = warp::get()
-        .and(warp::path::end())
-        .and(warp::fs::file("./front-end/index.html"));
-
-    let resources = warp::fs::dir("./front-end/");
-
     // DB and Redis
     let redis_client: Arc<RedisDb> = Arc::new(
         RedisDb::new("redis://redis:6379")
@@ -97,9 +90,8 @@ async fn main() {
         .allow_headers(vec!["authorization", "content-type"])
         .allow_credentials(true);
 
-    let api = front_end
-        .or(resources)
-        .or(search_routes(state_c(), redis_c()).or(episode_routes(state_c())))
+    let api = search_routes(state_c(), redis_c())
+        .or(episode_routes(state_c()))
         .with(cors)
         .recover(handle_rejection);
 
