@@ -1,5 +1,6 @@
 use diesel::prelude::*;
 use diesel::result::Error;
+use rand::seq::SliceRandom;
 
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
@@ -37,6 +38,20 @@ pub async fn latest(repo: &Repo) -> Result<f32, Error> {
             .select(number)
             .order_by(number.desc())
             .first::<f32>(&conn)
+    })
+    .await
+}
+
+pub async fn random(repo: &Repo) -> Result<f32, Error> {
+    repo.run(move |conn| {
+        let all_episode_numbers = pka_episode
+            .select(number)
+            .order_by(number.desc())
+            .load::<f32>(&conn)?;
+
+        Ok(*all_episode_numbers
+            .choose(&mut rand::thread_rng())
+            .unwrap_or(&0.0))
     })
     .await
 }
