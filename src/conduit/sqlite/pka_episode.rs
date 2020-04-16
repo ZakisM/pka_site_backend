@@ -21,6 +21,16 @@ pub async fn all(repo: &Repo) -> Result<Vec<PkaEpisode>, Error> {
     .await
 }
 
+pub async fn find_youtube_link(repo: &Repo, id: f32) -> Result<String, Error> {
+    repo.run(move |conn| {
+        pka_episode
+            .select(youtube_link)
+            .find(id)
+            .first::<String>(&conn)
+    })
+    .await
+}
+
 pub async fn latest(repo: &Repo) -> Result<f32, Error> {
     repo.run(move |conn| {
         pka_episode
