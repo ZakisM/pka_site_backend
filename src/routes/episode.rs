@@ -41,6 +41,17 @@ fn latest_pka_episode_r(
         .boxed()
 }
 
+fn random_pka_episode_r(
+    state: StateFilter,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    path_prefix()
+        .and(warp::path!("watch" / "random"))
+        .and(warp::get())
+        .and(state)
+        .and_then(handlers::episode::random_pka_episode)
+        .boxed()
+}
+
 pub fn episode_routes(
     state: StateFilter,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -48,5 +59,6 @@ pub fn episode_routes(
 
     watch_pka_episode_r(state_c())
         .or(latest_pka_episode_r(state_c()))
+        .or(random_pka_episode_r(state_c()))
         .or(find_pka_episode_youtube_link_r(state_c()))
 }

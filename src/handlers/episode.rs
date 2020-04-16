@@ -47,6 +47,19 @@ pub async fn latest_pka_episode(state: Arc<Repo>) -> Result<impl warp::Reply, In
     Ok(find_with_all(&state, latest_episode_number).await)
 }
 
+pub async fn random_pka_episode(state: Arc<Repo>) -> Result<impl warp::Reply, Infallible> {
+    let random_episode_number = match pka_episode::random(&state).await {
+        Ok(n) => n,
+        Err(_) => {
+            return Ok(
+                ApiError::new_internal_error("Couldn't get random episode number.").into_response(),
+            );
+        }
+    };
+
+    Ok(find_with_all(&state, random_episode_number).await)
+}
+
 async fn find_with_all(state: &Repo, number: f32) -> warp::reply::Response {
     match pka_episode::find_with_all(&state, number).await {
         Ok(res) => SuccessResponse::new(res).into_response(),
