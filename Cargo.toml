@@ -28,3 +28,4 @@ iso8601-duration = "0.1"
 libsqlite3-sys = { version = "*", features = ["bundled"] }
 redis = "0.15"
 bb8-redis = "0.5"
+rayon = "1.3"

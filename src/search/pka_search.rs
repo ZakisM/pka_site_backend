@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use rayon::prelude::*;
 use regex::{Regex, RegexSetBuilder};
 
 use crate::conduit::redis::event_cache;
@@ -78,8 +79,8 @@ where
 
 fn search_index<T, R>(query: &str, index: &[(HashSet<String>, T)]) -> Result<Vec<R>>
 where
-    T: Searchable + Clone,
-    R: std::cmp::Ord + From<T>,
+    T: Searchable + Clone + Sync + Send,
+    R: std::cmp::Ord + From<T> + Send,
 {
     let queries = query
         .split(' ')
@@ -87,16 +88,8 @@ where
         .collect::<Vec<String>>();
 
     let mut results: Vec<R> = index
-        .iter()
-        .filter(|(ids, _)| {
-            for q in &queries {
-                if !ids.iter().any(|i| i.contains(q)) {
-                    return false;
-                }
-            }
-
-            true
-        })
+        .par_iter()
+        .filter(|(ids, _)| queries.iter().all(|q| ids.iter().any(|i| i.contains(q))))
         .map(|(_, evt)| R::from(evt.to_owned()))
         .collect();
 
