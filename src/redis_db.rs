@@ -1,7 +1,5 @@
 use bb8_redis::{bb8, RedisConnectionManager, RedisPool};
 use redis::{AsyncCommands, ErrorKind, RedisError};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 
 pub struct RedisDb {
     connection_pool: RedisPool,
@@ -31,10 +29,7 @@ impl RedisDb {
         Ok(())
     }
 
-    pub async fn get<V>(&self, redis_tag: String, key: String) -> Result<Vec<V>, RedisError>
-    where
-        V: DeserializeOwned + Send + 'static,
-    {
+    pub async fn get(&self, redis_tag: String, key: String) -> Result<Vec<u8>, RedisError> {
         let pool = self.connection_pool.clone();
 
         tokio::spawn(async move {
@@ -49,26 +44,27 @@ impl RedisDb {
 
             let key = format!("{}-{}", redis_tag, key);
 
-            let value: String = conn.get(&key).await?;
+            let value: Vec<u8> = conn.get(&key).await?;
 
-            let value = serde_json::from_str::<Vec<V>>(value.as_ref())
-                .expect("Failed to read redis value.");
-
-            Ok(value)
+            if value.is_empty() {
+                Err(RedisError::from((
+                    ErrorKind::ClientError,
+                    "Redis will not return empty vector.",
+                )))
+            } else {
+                Ok(value)
+            }
         })
         .await
         .expect("Failed to run redis get task.")
     }
 
-    pub async fn set<V>(
+    pub async fn set(
         &self,
         redis_tag: String,
         key: String,
-        value: Vec<V>,
-    ) -> Result<(), RedisError>
-    where
-        V: Serialize + Send + Sync + 'static,
-    {
+        value: Vec<u8>,
+    ) -> Result<(), RedisError> {
         if value.is_empty() {
             return Err(RedisError::from((
                 ErrorKind::ClientError,
@@ -87,9 +83,6 @@ impl RedisDb {
             let conn = conn
                 .as_mut()
                 .expect("Failed to get connection as mut from pool.");
-
-            let value: Vec<u8> =
-                serde_json::to_vec(&value).expect("Failed to convert redis value to JSON bytes.");
 
             let key = format!("{}-{}", redis_tag, key);
 

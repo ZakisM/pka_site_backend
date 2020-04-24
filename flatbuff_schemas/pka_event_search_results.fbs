@@ -1,0 +1,11 @@
+table PkaEventSearchResultFb {
+	episode_number:float;
+	timestamp:long;
+	description:string;
+}
+
+table AllPkaEventSearchResultsFb {
+    results: [PkaEventSearchResultFb];
+}
+
+root_type AllPkaEventSearchResultsFb;

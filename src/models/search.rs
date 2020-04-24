@@ -20,6 +20,31 @@ pub struct PkaEventSearchResult {
     description: String,
 }
 
+impl PkaEventSearchResult {
+    #[allow(dead_code)]
+    pub fn new<S: AsRef<str>>(episode_number: f32, timestamp: i64, description: S) -> Self {
+        PkaEventSearchResult {
+            episode_number,
+            timestamp,
+            description: description.as_ref().to_string(),
+        }
+    }
+}
+
+impl PkaEventSearchResult {
+    pub fn episode_number(&self) -> f32 {
+        self.episode_number
+    }
+
+    pub fn timestamp(&self) -> i64 {
+        self.timestamp
+    }
+
+    pub fn description(&self) -> &str {
+        self.description.as_ref()
+    }
+}
+
 impl From<PkaEvent> for PkaEventSearchResult {
     fn from(e: PkaEvent) -> Self {
         Self {
