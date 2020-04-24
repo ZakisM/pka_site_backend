@@ -5,7 +5,8 @@ use regex::{Regex, RegexSetBuilder};
 
 use crate::conduit::redis::event_cache;
 use crate::conduit::sqlite::pka_episode;
-use crate::models::search::{PkaEpisodeSearchResult, PkaEventSearchResult};
+use crate::flatbuffers::pka_event::flatbuff_from_pka_events;
+use crate::models::search::PkaEpisodeSearchResult;
 use crate::redis_db::RedisDb;
 use crate::PKA_EVENTS_INDEX;
 use crate::{Repo, Result};
@@ -26,7 +27,7 @@ pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<PkaEpisodeS
     }
 }
 
-pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<PkaEventSearchResult>> {
+pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
     let query = query.trim();
 
     let redis_tag = "EVENTS";
@@ -37,7 +38,8 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<PkaEventS
             Err(_) => {
                 let all_events = PKA_EVENTS_INDEX.read().await;
 
-                let results = search_index(query, &*all_events)?;
+                let events = search_index(query, &*all_events)?;
+                let results = flatbuff_from_pka_events(events);
 
                 event_cache::set(&redis, redis_tag, query.to_owned(), results.to_vec()).await?;
 
@@ -54,7 +56,8 @@ where
     T: Searchable,
 {
     lazy_static! {
-        static ref WORD_REGEX: Regex = Regex::new(r"(\w+)").expect("Failed to create WORD_REGEX.");
+        static ref WORD_REGEX: Regex =
+            Regex::new(r"([^\s]+)").expect("Failed to create WORD_REGEX.");
     }
 
     items

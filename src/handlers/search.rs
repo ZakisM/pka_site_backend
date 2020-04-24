@@ -27,7 +27,7 @@ pub async fn search_pka_event(
     redis: Arc<RedisDb>,
 ) -> Result<impl warp::Reply, Infallible> {
     match search_events(&redis, &sq.query).await {
-        Ok(res) => Ok(SuccessResponse::new(res).into_response()),
+        Ok(res) => Ok(res.into_response()),
         Err(e) => {
             // Should return Err once improves in Warp;
             Ok(e.into_response())

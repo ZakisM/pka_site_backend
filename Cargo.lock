@@ -392,6 +392,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "flatbuffers"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a788f068dd10687940565bf4b5480ee943176cbd114b12e811074bcf7c04e4b9"
+dependencies = [
+ "smallvec",
+]
+
+[[package]]
 name = "float-ord"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1203,6 +1212,7 @@ dependencies = [
  "diesel",
  "diesel-derive-newtype",
  "feed-rs",
+ "flatbuffers",
  "float-ord",
  "futures",
  "iso8601-duration",

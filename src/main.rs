@@ -30,6 +30,7 @@ use crate::workers::new_episode::latest_episode;
 
 mod conduit;
 mod db;
+mod flatbuffers;
 mod handlers;
 mod models;
 mod redis_db;
