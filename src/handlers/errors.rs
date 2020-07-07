@@ -14,17 +14,17 @@ pub async fn handle_rejection(err: warp::Rejection) -> Result<impl Reply, Infall
     if err.is_not_found() {
         code = StatusCode::NOT_FOUND;
         message = "NOT_FOUND".to_owned();
-    } else if err.find::<warp::reject::MethodNotAllowed>().is_some() {
+    } else if let Some(e) = err.find::<warp::reject::MethodNotAllowed>() {
         code = StatusCode::METHOD_NOT_ALLOWED;
-        message = "METHOD_NOT_ALLOWED".to_owned();
-    } else if err.find::<BodyDeserializeError>().is_some() {
+        message = e.to_string();
+    } else if let Some(e) = err.find::<BodyDeserializeError>() {
         error!("Could not read JSON data: {:?}", err);
         code = StatusCode::BAD_REQUEST;
-        message = "Could not read JSON data".to_owned();
-    } else if err.find::<PayloadTooLarge>().is_some() {
+        message = e.to_string();
+    } else if let Some(e) = err.find::<PayloadTooLarge>() {
         error!("Payload was too large: {:?}", err);
         code = StatusCode::BAD_REQUEST;
-        message = "Payload was too large".to_owned();
+        message = e.to_string();
     } else {
         error!("unhandled rejection: {:?}", err);
         code = StatusCode::INTERNAL_SERVER_ERROR;
