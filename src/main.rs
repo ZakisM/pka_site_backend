@@ -68,6 +68,7 @@ async fn main() {
 
     *YT_API_KEY.write().await = env::var("YT_API_KEY").expect("Youtube API key required to start.");
 
+    //TODO: Fix clippy errors and surround this in brackets so it is not held in memory twice.
     *PKA_EVENTS_INDEX.write().await = create_index(
         pka_event::all(&state)
             .await
