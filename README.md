@@ -15,7 +15,7 @@ To run locally:
    - 0.0.0.0 pkaindextest.com
 5. Create a folder somewhere i.e `/Users/zak/Desktop/selfsigned/` and generate self-signed SSL Certificate in this folder:
    - NOTE: When openssl asks you to enter `Common name:` put `pkaindextest.com`
-   - `openssl req -new -x509 -days 365 -nodes -out /Users/zak/Desktop/selfsigned/nginx.pem -keyout /Users/zak/Desktop/selfsigned/nginx.key -newkey rsa:2048`
+   - `openssl req -new -x509 -days 365 -nodes -out /Users/zak/Desktop/selfsigned/pkaindextest.pem -keyout /Users/zak/Desktop/selfsigned/pkaindextest.key -newkey rsa:2048`
 6. Modify `nginx.conf` from this project and replace the lines that have `YOUR_SELF_SIGNED_KEY_DIRECTORY` with the folder you created in the previous step. i.e `/Users/zak/Desktop/selfsigned/`
 7. Install `nginx` and modify `/etc/nginx/nginx.conf` on your machine, so it is the same as `nginx.conf` that you just modified from this project.
 8. Start `nginx`.
