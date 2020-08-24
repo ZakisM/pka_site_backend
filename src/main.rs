@@ -66,14 +66,16 @@ async fn main() {
 
     let state: Arc<Repo> = Arc::new(SqDatabase::new("./pka_db.sqlite3"));
 
-    *YT_API_KEY.write().await = env::var("YT_API_KEY").expect("Youtube API key required to start.");
+    {
+        *YT_API_KEY.write().await =
+            env::var("YT_API_KEY").expect("Youtube API key required to start.");
 
-    //TODO: Fix clippy errors and surround this in brackets so it is not held in memory twice.
-    *PKA_EVENTS_INDEX.write().await = create_index(
-        pka_event::all(&state)
+        let all_events = pka_event::all(&state)
             .await
-            .expect("Failed to add all PKA events"),
-    );
+            .expect("Failed to add all PKA events");
+
+        *PKA_EVENTS_INDEX.write().await = create_index(all_events);
+    }
 
     // workers
     let worker_state = || state.clone();

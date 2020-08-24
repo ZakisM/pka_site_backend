@@ -119,11 +119,7 @@ pub fn extract_pka_episode_events(ep_number: f32, data: &str) -> Result<Vec<PkaE
         };
 
         let timestamp = NaiveTime::parse_from_str(&time_date, "%H:%M:%S")
-            .or_else(|_| {
-                Err(ApiError::new_internal_error(
-                    "Failed to convert time_date to timestamp",
-                ))
-            })?
+            .map_err(|_| ApiError::new_internal_error("Failed to convert time_date to timestamp"))?
             .num_seconds_from_midnight() as i64;
 
         let description = result

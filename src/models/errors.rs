@@ -8,8 +8,8 @@ use warp::reply::Response;
 
 #[derive(Clone, Debug)]
 pub struct ApiError {
-    message: String,
-    code: StatusCode,
+    pub message: String,
+    pub code: StatusCode,
 }
 
 impl fmt::Display for ApiError {
@@ -73,10 +73,18 @@ impl From<diesel::result::Error> for ApiError {
     }
 }
 
+impl warp::reject::Reject for ApiError {}
+
 impl warp::Reply for ApiError {
     fn into_response(self) -> Response {
         let json = warp::reply::json(&self);
         warp::reply::with_status(json, self.code).into_response()
+    }
+}
+
+impl From<ApiError> for warp::Rejection {
+    fn from(api_err: ApiError) -> Self {
+        warp::reject::custom(api_err)
     }
 }
 

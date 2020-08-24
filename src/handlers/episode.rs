@@ -1,8 +1,7 @@
-use std::convert::Infallible;
 use std::sync::Arc;
 
-use reqwest::StatusCode;
-use warp::Reply;
+use warp::http::StatusCode;
+use warp::Rejection;
 
 use crate::conduit::sqlite::pka_episode;
 use crate::conduit::sqlite::pka_episode::find_youtube_link;
@@ -13,56 +12,45 @@ use crate::Repo;
 pub async fn watch_pka_episode(
     number: f32,
     state: Arc<Repo>,
-) -> Result<impl warp::Reply, Infallible> {
-    Ok(find_with_all(&state, number).await)
+) -> Result<impl warp::Reply, Rejection> {
+    let res = pka_episode::find_with_all(&state, number)
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(SuccessResponse::new(res))
 }
 
 pub async fn find_pka_episode_youtube_link(
     number: f32,
     state: Arc<Repo>,
-) -> Result<impl warp::Reply, Infallible> {
-    match find_youtube_link(&state, number).await {
-        Ok(res) => Ok(SuccessResponse::new(res).into_response()),
-        Err(e) => {
-            error!("{}", e);
-            // Should return Err once improves in Warp;
-            Ok(
-                ApiError::new("Couldn't find episode number.", StatusCode::NOT_FOUND)
-                    .into_response(),
-            )
-        }
-    }
+) -> Result<impl warp::Reply, Rejection> {
+    let res = find_youtube_link(&state, number)
+        .await
+        .map_err(|_| ApiError::new("Couldn't find episode number", StatusCode::NOT_FOUND))?;
+
+    Ok(SuccessResponse::new(res))
 }
 
-pub async fn latest_pka_episode(state: Arc<Repo>) -> Result<impl warp::Reply, Infallible> {
-    let latest_episode_number = match pka_episode::latest(&state).await {
-        Ok(n) => n,
-        Err(_) => {
-            return Ok(
-                ApiError::new_internal_error("Couldn't get latest episode number.").into_response(),
-            );
-        }
-    };
+pub async fn latest_pka_episode(state: Arc<Repo>) -> Result<impl warp::Reply, Rejection> {
+    let latest_episode_number = pka_episode::latest(&state)
+        .await
+        .map_err(|_| ApiError::new_internal_error("Couldn't get latest episode number."))?;
 
-    Ok(find_with_all(&state, latest_episode_number).await)
+    let res = pka_episode::find_with_all(&state, latest_episode_number)
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(SuccessResponse::new(res))
 }
 
-pub async fn random_pka_episode(state: Arc<Repo>) -> Result<impl warp::Reply, Infallible> {
-    let random_episode_number = match pka_episode::random(&state).await {
-        Ok(n) => n,
-        Err(_) => {
-            return Ok(
-                ApiError::new_internal_error("Couldn't get random episode number.").into_response(),
-            );
-        }
-    };
+pub async fn random_pka_episode(state: Arc<Repo>) -> Result<impl warp::Reply, Rejection> {
+    let random_episode_number = pka_episode::random(&state)
+        .await
+        .map_err(|_| ApiError::new_internal_error("Couldn't get random episode number."))?;
 
-    Ok(find_with_all(&state, random_episode_number).await)
-}
+    let res = pka_episode::find_with_all(&state, random_episode_number)
+        .await
+        .map_err(ApiError::from)?;
 
-async fn find_with_all(state: &Repo, number: f32) -> warp::reply::Response {
-    match pka_episode::find_with_all(&state, number).await {
-        Ok(res) => SuccessResponse::new(res).into_response(),
-        Err(e) => ApiError::from(e).into_response(),
-    }
+    Ok(SuccessResponse::new(res))
 }

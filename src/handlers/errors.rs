@@ -25,6 +25,10 @@ pub async fn handle_rejection(err: warp::Rejection) -> Result<impl Reply, Infall
         error!("Payload was too large: {:?}", err);
         code = StatusCode::BAD_REQUEST;
         message = e.to_string();
+    } else if let Some(e) = err.find::<ApiError>() {
+        error!("API Error: {}", e);
+        code = e.code;
+        message = e.message.to_owned();
     } else {
         error!("unhandled rejection: {:?}", err);
         code = StatusCode::INTERNAL_SERVER_ERROR;

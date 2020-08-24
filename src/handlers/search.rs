@@ -1,8 +1,8 @@
-use std::convert::Infallible;
 use std::sync::Arc;
 
-use warp::Reply;
+use warp::Rejection;
 
+use crate::models::errors::ApiError;
 use crate::models::search::SearchQuery;
 use crate::models::success_response::SuccessResponse;
 use crate::redis_db::RedisDb;
@@ -12,25 +12,21 @@ use crate::Repo;
 pub async fn search_pka_episode(
     sq: SearchQuery,
     state: Arc<Repo>,
-) -> Result<impl warp::Reply, Infallible> {
-    match search_episode(&state, &sq.query).await {
-        Ok(res) => Ok(SuccessResponse::new(res).into_response()),
-        Err(e) => {
-            // Should return Err once improves in Warp;
-            Ok(e.into_response())
-        }
-    }
+) -> Result<impl warp::Reply, Rejection> {
+    let res = search_episode(&state, &sq.query)
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(SuccessResponse::new(res))
 }
 
 pub async fn search_pka_event(
     sq: SearchQuery,
     redis: Arc<RedisDb>,
-) -> Result<impl warp::Reply, Infallible> {
-    match search_events(&redis, &sq.query).await {
-        Ok(res) => Ok(res.into_response()),
-        Err(e) => {
-            // Should return Err once improves in Warp;
-            Ok(e.into_response())
-        }
-    }
+) -> Result<impl warp::Reply, Rejection> {
+    let res = search_events(&redis, &sq.query)
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(res)
 }
