@@ -16,17 +16,24 @@ pub struct SearchQuery {
 #[serde(rename_all = "camelCase")]
 pub struct PkaEventSearchResult {
     episode_number: f32,
-    timestamp: i64,
+    timestamp: i32,
     description: String,
+    length_seconds: i32,
 }
 
 impl PkaEventSearchResult {
     #[allow(dead_code)]
-    pub fn new<S: AsRef<str>>(episode_number: f32, timestamp: i64, description: S) -> Self {
+    pub fn new<S: AsRef<str>>(
+        episode_number: f32,
+        timestamp: i32,
+        description: S,
+        length_seconds: i32,
+    ) -> Self {
         PkaEventSearchResult {
             episode_number,
             timestamp,
             description: description.as_ref().to_string(),
+            length_seconds,
         }
     }
 }
@@ -36,12 +43,16 @@ impl PkaEventSearchResult {
         self.episode_number
     }
 
-    pub fn timestamp(&self) -> i64 {
+    pub fn timestamp(&self) -> i32 {
         self.timestamp
     }
 
     pub fn description(&self) -> &str {
         self.description.as_ref()
+    }
+
+    pub fn length_seconds(&self) -> i32 {
+        self.length_seconds
     }
 }
 
@@ -51,6 +62,7 @@ impl From<PkaEvent> for PkaEventSearchResult {
             episode_number: e.episode_number(),
             timestamp: e.timestamp(),
             description: e.description().to_owned(),
+            length_seconds: e.length_seconds(),
         }
     }
 }
@@ -81,6 +93,7 @@ pub struct PkaEpisodeSearchResult {
     episode_number: f32,
     upload_date: i64,
     title: String,
+    length_seconds: i32,
 }
 
 impl Searchable for PkaEpisodeSearchResult {

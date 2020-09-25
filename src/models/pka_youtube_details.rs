@@ -14,17 +14,21 @@ pub struct PkaYoutubeDetails {
     #[serde(skip_serializing)]
     episode_number: DieselF32,
     title: String,
-    length_seconds: i16,
+    length_seconds: i32,
 }
 
 impl PkaYoutubeDetails {
-    pub fn new(video_id: String, episode_number: f32, title: String, length_seconds: i16) -> Self {
+    pub fn new(video_id: String, episode_number: f32, title: String, length_seconds: i32) -> Self {
         PkaYoutubeDetails {
             video_id,
             episode_number: DieselF32(episode_number),
             title,
             length_seconds,
         }
+    }
+
+    pub fn length_seconds(&self) -> i32 {
+        self.length_seconds
     }
 
     pub fn episode_number(&self) -> f32 {

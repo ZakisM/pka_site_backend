@@ -37,10 +37,10 @@ pub struct Snippet {
 #[serde(rename_all = "camelCase")]
 pub struct ContentDetails {
     #[serde(deserialize_with = "duration_as_seconds")]
-    pub duration: i16,
+    pub duration: i32,
 }
 
-fn duration_as_seconds<'de, D>(deserializer: D) -> std::result::Result<i16, D::Error>
+fn duration_as_seconds<'de, D>(deserializer: D) -> std::result::Result<i32, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -50,7 +50,7 @@ where
         .to_std();
     let time = chrono::Duration::from_std(time)
         .map_err(de::Error::custom)?
-        .num_seconds() as i16;
+        .num_seconds() as i32;
 
     Ok(time)
 }

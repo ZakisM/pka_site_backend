@@ -13,7 +13,7 @@ pub async fn handle_rejection(err: warp::Rejection) -> Result<impl Reply, Infall
 
     if err.is_not_found() {
         code = StatusCode::NOT_FOUND;
-        message = "NOT_FOUND".to_owned();
+        message = "Page does not exist.".to_owned();
     } else if let Some(e) = err.find::<warp::reject::MethodNotAllowed>() {
         code = StatusCode::METHOD_NOT_ALLOWED;
         message = e.to_string();

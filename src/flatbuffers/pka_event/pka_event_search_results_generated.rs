@@ -21,10 +21,11 @@ impl<'a> PkaEventSearchResultFb<'a> {
         args: &'args PkaEventSearchResultFbArgs<'args>,
     ) -> flatbuffers::WIPOffset<PkaEventSearchResultFb<'bldr>> {
         let mut builder = PkaEventSearchResultFbBuilder::new(_fbb);
-        builder.add_timestamp(args.timestamp);
+        builder.add_length_seconds(args.length_seconds);
         if let Some(x) = args.description {
             builder.add_description(x);
         }
+        builder.add_timestamp(args.timestamp);
         builder.add_episode_number(args.episode_number);
         builder.finish()
     }
@@ -32,6 +33,7 @@ impl<'a> PkaEventSearchResultFb<'a> {
     pub const VT_EPISODE_NUMBER: flatbuffers::VOffsetT = 4;
     pub const VT_TIMESTAMP: flatbuffers::VOffsetT = 6;
     pub const VT_DESCRIPTION: flatbuffers::VOffsetT = 8;
+    pub const VT_LENGTH_SECONDS: flatbuffers::VOffsetT = 10;
 
     #[inline]
     pub fn episode_number(&self) -> f32 {
@@ -40,9 +42,9 @@ impl<'a> PkaEventSearchResultFb<'a> {
             .unwrap()
     }
     #[inline]
-    pub fn timestamp(&self) -> i64 {
+    pub fn timestamp(&self) -> i32 {
         self._tab
-            .get::<i64>(PkaEventSearchResultFb::VT_TIMESTAMP, Some(0))
+            .get::<i32>(PkaEventSearchResultFb::VT_TIMESTAMP, Some(0))
             .unwrap()
     }
     #[inline]
@@ -50,12 +52,19 @@ impl<'a> PkaEventSearchResultFb<'a> {
         self._tab
             .get::<flatbuffers::ForwardsUOffset<&str>>(PkaEventSearchResultFb::VT_DESCRIPTION, None)
     }
+    #[inline]
+    pub fn length_seconds(&self) -> i32 {
+        self._tab
+            .get::<i32>(PkaEventSearchResultFb::VT_LENGTH_SECONDS, Some(0))
+            .unwrap()
+    }
 }
 
 pub struct PkaEventSearchResultFbArgs<'a> {
     pub episode_number: f32,
-    pub timestamp: i64,
+    pub timestamp: i32,
     pub description: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub length_seconds: i32,
 }
 
 impl<'a> Default for PkaEventSearchResultFbArgs<'a> {
@@ -65,6 +74,7 @@ impl<'a> Default for PkaEventSearchResultFbArgs<'a> {
             episode_number: 0.0,
             timestamp: 0,
             description: None,
+            length_seconds: 0,
         }
     }
 }
@@ -84,9 +94,9 @@ impl<'a: 'b, 'b> PkaEventSearchResultFbBuilder<'a, 'b> {
         );
     }
     #[inline]
-    pub fn add_timestamp(&mut self, timestamp: i64) {
+    pub fn add_timestamp(&mut self, timestamp: i32) {
         self.fbb_
-            .push_slot::<i64>(PkaEventSearchResultFb::VT_TIMESTAMP, timestamp, 0);
+            .push_slot::<i32>(PkaEventSearchResultFb::VT_TIMESTAMP, timestamp, 0);
     }
     #[inline]
     pub fn add_description(&mut self, description: flatbuffers::WIPOffset<&'b str>) {
@@ -94,6 +104,11 @@ impl<'a: 'b, 'b> PkaEventSearchResultFbBuilder<'a, 'b> {
             PkaEventSearchResultFb::VT_DESCRIPTION,
             description,
         );
+    }
+    #[inline]
+    pub fn add_length_seconds(&mut self, length_seconds: i32) {
+        self.fbb_
+            .push_slot::<i32>(PkaEventSearchResultFb::VT_LENGTH_SECONDS, length_seconds, 0);
     }
     #[inline]
     pub fn new(
@@ -112,7 +127,6 @@ impl<'a: 'b, 'b> PkaEventSearchResultFbBuilder<'a, 'b> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct AllPkaEventSearchResultsFb<'a> {
     pub _tab: flatbuffers::Table<'a>,
 }

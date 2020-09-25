@@ -11,8 +11,9 @@ table! {
     pka_event (event_id) {
         event_id -> Text,
         episode_number -> Float,
-        timestamp -> BigInt,
+        timestamp -> Integer,
         description -> Text,
+        length_seconds -> Integer,
     }
 }
 
@@ -28,7 +29,7 @@ table! {
         video_id -> Text,
         episode_number -> Float,
         title -> Text,
-        length_seconds -> SmallInt,
+        length_seconds -> Integer,
     }
 }
 

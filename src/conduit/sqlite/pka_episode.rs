@@ -9,18 +9,9 @@ use crate::models::pka_youtube_details::PkaYoutubeDetails;
 use crate::models::search::PkaEpisodeSearchResult;
 use crate::schema::pka_episode::dsl::*;
 use crate::schema::pka_event::columns::timestamp;
-use crate::schema::pka_youtube_details::columns::title;
+use crate::schema::pka_youtube_details::columns::{length_seconds, title};
 use crate::schema::pka_youtube_details::dsl::pka_youtube_details;
 use crate::{schema, Repo};
-
-pub async fn all(repo: &Repo) -> Result<Vec<PkaEpisode>, Error> {
-    repo.run(move |conn| {
-        pka_episode
-            .order_by(number.desc())
-            .load::<PkaEpisode>(&conn)
-    })
-    .await
-}
 
 pub async fn find_youtube_link(repo: &Repo, id: f32) -> Result<String, Error> {
     repo.run(move |conn| {
@@ -61,7 +52,7 @@ pub async fn all_with_yt_details(repo: &Repo) -> Result<Vec<PkaEpisodeSearchResu
         let all_episodes: Vec<PkaEpisodeSearchResult> = pka_episode
             .order_by(number.desc())
             .inner_join(pka_youtube_details)
-            .select((number, upload_date, title))
+            .select((number, upload_date, title, length_seconds))
             .load(&conn)?;
 
         Ok(all_episodes)
