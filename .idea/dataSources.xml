@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
-    <data-source source="LOCAL" name="pka_db" uuid="388b3940-46b9-4684-89c3-e34e744149d6">
+    <data-source source="LOCAL" name="pka_db" uuid="0f529a28-c628-4281-a628-531fe4b62904">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>

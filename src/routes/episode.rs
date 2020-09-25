@@ -5,7 +5,7 @@ use crate::routes::path_prefix as main_prefix;
 use crate::{handlers, StateFilter};
 
 fn path_prefix() -> BoxedFilter<()> {
-    main_prefix().and(warp::path!("pka_episode" / ..)).boxed()
+    main_prefix().and(warp::path!("episode" / ..)).boxed()
 }
 
 fn watch_pka_episode_r(

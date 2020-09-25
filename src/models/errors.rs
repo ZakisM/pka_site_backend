@@ -67,7 +67,9 @@ impl From<diesel::result::Error> for ApiError {
         error!("{}", err_string);
 
         match description.as_str() {
-            "Record not found" => ApiError::new("Not found in database", StatusCode::NOT_FOUND),
+            "Record not found" | "NotFound" => {
+                ApiError::new("Data could not be found.", StatusCode::NOT_FOUND)
+            }
             _ => ApiError::new(err_string, StatusCode::INTERNAL_SERVER_ERROR),
         }
     }

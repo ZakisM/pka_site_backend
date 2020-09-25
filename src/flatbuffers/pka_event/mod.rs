@@ -20,6 +20,7 @@ pub fn flatbuff_from_pka_events(events: Vec<PkaEventSearchResult>) -> Vec<u8> {
                 episode_number: e.episode_number(),
                 timestamp: e.timestamp(),
                 description: Some(bldr.create_string(e.description())),
+                length_seconds: e.length_seconds(),
             };
 
             PkaEventSearchResultFb::create(&mut bldr, &e_arg)
@@ -41,7 +42,7 @@ pub fn flatbuff_from_pka_events(events: Vec<PkaEventSearchResult>) -> Vec<u8> {
 }
 
 #[allow(dead_code)]
-fn read_event(buf: &[u8], index: usize) -> (f32, i64, &str) {
+fn read_event(buf: &[u8], index: usize) -> (f32, i32, &str, i32) {
     let e = get_root_as_all_pka_event_search_results_fb(buf);
     let results = e.results().unwrap();
     let first_event = results.get(index);
@@ -50,6 +51,7 @@ fn read_event(buf: &[u8], index: usize) -> (f32, i64, &str) {
         first_event.episode_number(),
         first_event.timestamp(),
         first_event.description().unwrap(),
+        first_event.length_seconds(),
     )
 }
 
@@ -60,21 +62,19 @@ mod tests {
     #[test]
     fn read_events() {
         let all_events = vec![
-            PkaEventSearchResult::new(488.0, 1234, "Zak joins the first show."),
-            PkaEventSearchResult::new(489.0, 5678, "Zak joins the second show."),
+            PkaEventSearchResult::new(488.0, 1234, "Zak joins the first show.", 10),
+            PkaEventSearchResult::new(489.0, 5678, "Zak joins the second show.", 300),
         ];
 
         let fb = flatbuff_from_pka_events(all_events);
 
-        assert_eq!(fb.len(), 152);
-
         assert_eq!(
             read_event(&fb, 0),
-            (488.0, 1234, "Zak joins the first show.")
+            (488.0, 1234, "Zak joins the first show.", 10)
         );
         assert_eq!(
             read_event(&fb, 1),
-            (489.0, 5678, "Zak joins the second show.")
+            (489.0, 5678, "Zak joins the second show.", 300)
         );
     }
 }

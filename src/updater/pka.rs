@@ -10,8 +10,6 @@ use crate::models::pka_youtube_details::PkaYoutubeDetails;
 use crate::updater::youtube_api::YoutubeAPI;
 use crate::{Repo, Result};
 
-pub const PKA_DESCRIPTIONS_FOLDER: &str = "PKA-Descriptions";
-
 const WOODY_YOUTUBE_RSA_FEED: &str =
     "https://www.youtube.com/feeds/videos.xml?channel_id=UCIPVJoHb_A5S3kcv3TJlyEg";
 
@@ -54,7 +52,11 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
         uploaded,
     );
 
-    let events = extract_pka_episode_events(latest_episode_number, &details.snippet.description)?;
+    let events = extract_pka_episode_events(
+        latest_episode_number,
+        &details.snippet.description,
+        &details.content_details.duration,
+    )?;
 
     let youtube_details = PkaYoutubeDetails::new(
         details.id,
@@ -82,7 +84,11 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
     Ok(())
 }
 
-pub fn extract_pka_episode_events(ep_number: f32, data: &str) -> Result<Vec<PkaEvent>> {
+pub fn extract_pka_episode_events(
+    ep_number: f32,
+    data: &str,
+    ep_length_seconds: &i32,
+) -> Result<Vec<PkaEvent>> {
     lazy_static! {
         static ref TIMELINE_REGEX: Regex = Regex::new(r"(\d{1,2}:\d{2}:?\d*)(?:\s*-\s*)*\s*(.+)")
             .expect("Failed to create TIMELINE_REGEX.");
@@ -90,7 +96,7 @@ pub fn extract_pka_episode_events(ep_number: f32, data: &str) -> Result<Vec<PkaE
             Regex::new(r#"^(\d)(?::)"#).expect("Failed to create UNPADDED_MINUTE_REGEX");
     }
 
-    let mut events = Vec::new();
+    let mut events_without_duration: Vec<(String, f32, i32, String)> = Vec::new();
 
     for result in TIMELINE_REGEX.captures_iter(data) {
         let mut time_date = result
@@ -120,7 +126,7 @@ pub fn extract_pka_episode_events(ep_number: f32, data: &str) -> Result<Vec<PkaE
 
         let timestamp = NaiveTime::parse_from_str(&time_date, "%H:%M:%S")
             .map_err(|_| ApiError::new_internal_error("Failed to convert time_date to timestamp"))?
-            .num_seconds_from_midnight() as i64;
+            .num_seconds_from_midnight() as i32;
 
         let description = result
             .get(2)
@@ -137,9 +143,37 @@ pub fn extract_pka_episode_events(ep_number: f32, data: &str) -> Result<Vec<PkaE
 
         let event_id = format!("{:<03}-{}", ep_number, timestamp);
 
-        let event = PkaEvent::new(event_id, ep_number, timestamp, description);
-        events.push(event);
+        events_without_duration.push((event_id, ep_number, timestamp, description));
     }
+
+    //sort events by timestamp
+    events_without_duration.sort_by(|a, b| a.2.cmp(&b.2));
+
+    let events = events_without_duration
+        .iter()
+        .enumerate()
+        .map(|(index, event)| {
+            //Calculate duration of each event
+            let mut length_seconds =
+                if let Some(next_event) = events_without_duration.get(index + 1) {
+                    next_event.2 - event.2
+                } else {
+                    *ep_length_seconds - event.2
+                };
+
+            if length_seconds < 0 {
+                length_seconds = 1;
+            }
+
+            PkaEvent::new(
+                event.0.clone(),
+                event.1,
+                event.2,
+                event.3.clone(),
+                length_seconds,
+            )
+        })
+        .collect();
 
     Ok(events)
 }

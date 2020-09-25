@@ -14,18 +14,26 @@ pub struct PkaEvent {
     #[serde(skip_serializing)]
     event_id: String,
     #[serde(skip_serializing)]
-    pub episode_number: DieselF32,
-    timestamp: i64,
+    episode_number: DieselF32,
+    timestamp: i32,
     description: String,
+    length_seconds: i32,
 }
 
 impl PkaEvent {
-    pub fn new(event_id: String, episode_number: f32, timestamp: i64, description: String) -> Self {
+    pub fn new(
+        event_id: String,
+        episode_number: f32,
+        timestamp: i32,
+        description: String,
+        length_seconds: i32,
+    ) -> Self {
         PkaEvent {
             event_id,
             episode_number: DieselF32(episode_number),
             timestamp,
             description,
+            length_seconds,
         }
     }
 
@@ -33,16 +41,20 @@ impl PkaEvent {
         self.episode_number.0
     }
 
-    pub fn event_id(&self) -> &str {
-        self.event_id.as_str()
+    pub fn event_id(&self) -> String {
+        self.event_id.to_owned()
     }
 
-    pub fn timestamp(&self) -> i64 {
+    pub fn timestamp(&self) -> i32 {
         self.timestamp
     }
 
     pub fn description(&self) -> &str {
         self.description.as_str()
+    }
+
+    pub fn length_seconds(&self) -> i32 {
+        self.length_seconds
     }
 }
 
