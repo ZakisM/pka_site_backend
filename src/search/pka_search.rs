@@ -6,6 +6,7 @@ use regex::{Regex, RegexSetBuilder};
 use crate::conduit::redis::event_cache;
 use crate::conduit::sqlite::pka_episode;
 use crate::flatbuffers::pka_event::flatbuff_from_pka_events;
+use crate::models::pka_event::PkaEvent;
 use crate::models::search::PkaEpisodeSearchResult;
 use crate::redis_db::RedisDb;
 use crate::PKA_EVENTS_INDEX;
@@ -38,7 +39,7 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
             Err(_) => {
                 let all_events = PKA_EVENTS_INDEX.read().await;
 
-                let events = search_index(query, &*all_events)?;
+                let events: Vec<&PkaEvent> = search_index(query, &*all_events);
                 let results = flatbuff_from_pka_events(events);
 
                 event_cache::set(&redis, redis_tag, query.to_owned(), results.to_vec()).await?;
@@ -80,25 +81,23 @@ where
         .collect()
 }
 
-fn search_index<T, R>(query: &str, index: &[(HashSet<String>, T)]) -> Result<Vec<R>>
+fn search_index<'a, T>(query: &str, index: &'a [(HashSet<String>, T)]) -> Vec<&'a T>
 where
-    T: Searchable + Clone + Sync + Send,
-    R: std::cmp::Ord + From<T> + Send,
+    T: Searchable + Sync + Send + Ord,
 {
-    let queries = query
-        .split(' ')
-        .map(|q| q.to_lowercase())
-        .collect::<Vec<String>>();
+    let query = query.to_lowercase();
 
-    let mut results: Vec<R> = index
+    let queries = query.split(' ').collect::<Vec<&str>>();
+
+    let mut results: Vec<&T> = index
         .par_iter()
         .filter(|(ids, _)| queries.iter().all(|q| ids.iter().any(|i| i.contains(q))))
-        .map(|(_, evt)| R::from(evt.to_owned()))
+        .map(|(_, evt)| evt)
         .collect();
 
     results.sort();
 
-    Ok(results)
+    results
 }
 
 fn search<T, R>(query: &str, items: &[T]) -> Result<Vec<R>>

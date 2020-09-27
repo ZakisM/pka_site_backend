@@ -5,16 +5,15 @@ use crate::flatbuffers::pka_event::pka_event_search_results_generated::{
     AllPkaEventSearchResultsFb, AllPkaEventSearchResultsFbArgs, PkaEventSearchResultFb,
     PkaEventSearchResultFbArgs,
 };
-use crate::models::search::PkaEventSearchResult;
+use crate::models::pka_event::PkaEvent;
 
 pub mod pka_event_search_results_generated;
 
-pub fn flatbuff_from_pka_events(events: Vec<PkaEventSearchResult>) -> Vec<u8> {
-    let mut bldr = FlatBufferBuilder::new();
-    let mut bytes: Vec<u8> = Vec::new();
+pub fn flatbuff_from_pka_events(events: Vec<&PkaEvent>) -> Vec<u8> {
+    let mut bldr = FlatBufferBuilder::new_with_capacity(events.capacity());
 
     let events_vec: Vec<WIPOffset<PkaEventSearchResultFb>> = events
-        .into_iter()
+        .iter()
         .map(|e| {
             let e_arg = PkaEventSearchResultFbArgs {
                 episode_number: e.episode_number(),
@@ -36,9 +35,8 @@ pub fn flatbuff_from_pka_events(events: Vec<PkaEventSearchResult>) -> Vec<u8> {
     finish_all_pka_event_search_results_fb_buffer(&mut bldr, all_events);
 
     let finished_data = bldr.finished_data();
-    bytes.extend_from_slice(finished_data);
 
-    bytes
+    finished_data.to_vec()
 }
 
 #[allow(dead_code)]
@@ -61,10 +59,23 @@ mod tests {
 
     #[test]
     fn read_events() {
-        let all_events = vec![
-            PkaEventSearchResult::new(488.0, 1234, "Zak joins the first show.", 10),
-            PkaEventSearchResult::new(489.0, 5678, "Zak joins the second show.", 300),
-        ];
+        let first_event = PkaEvent::new(
+            "488-1234".to_owned(),
+            488.0,
+            1234,
+            "Zak joins the first show.".to_owned(),
+            10,
+        );
+
+        let second_event = PkaEvent::new(
+            "489-5678".to_owned(),
+            489.0,
+            5678,
+            "Zak joins the second show.".to_owned(),
+            300,
+        );
+
+        let all_events = vec![&first_event, &second_event];
 
         let fb = flatbuff_from_pka_events(all_events);
 

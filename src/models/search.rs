@@ -38,24 +38,6 @@ impl PkaEventSearchResult {
     }
 }
 
-impl PkaEventSearchResult {
-    pub fn episode_number(&self) -> f32 {
-        self.episode_number
-    }
-
-    pub fn timestamp(&self) -> i32 {
-        self.timestamp
-    }
-
-    pub fn description(&self) -> &str {
-        self.description.as_ref()
-    }
-
-    pub fn length_seconds(&self) -> i32 {
-        self.length_seconds
-    }
-}
-
 impl From<PkaEvent> for PkaEventSearchResult {
     fn from(e: PkaEvent) -> Self {
         Self {
