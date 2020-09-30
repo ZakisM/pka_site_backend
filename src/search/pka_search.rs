@@ -65,14 +65,8 @@ where
         .map(|evt| {
             let mut searchable_terms: IndexSet<String> = IndexSet::new();
 
-            for cap in WORD_REGEX.captures_iter(evt.field_to_match()) {
-                for c in cap.iter() {
-                    searchable_terms.insert(
-                        c.expect("Failed to extract word to create index")
-                            .as_str()
-                            .to_lowercase(),
-                    );
-                }
+            for c in WORD_REGEX.find_iter(evt.field_to_match()) {
+                searchable_terms.insert(c.as_str().to_lowercase());
             }
 
             (searchable_terms, evt)
