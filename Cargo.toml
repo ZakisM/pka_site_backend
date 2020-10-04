@@ -31,3 +31,4 @@ bb8-redis = "0.5"
 rayon = "1.3"
 flatbuffers = "0.6"
 indexmap = "1.6"
+mimalloc = { version = "*", default-features = false }
