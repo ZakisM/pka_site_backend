@@ -30,7 +30,8 @@ RUN apt-get update \
     && apt-get install -y ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-ENV APP_USER=appuser
+ENV APP_USER=appuser \
+    RUSTFLAGS='-C target-cpu=znver2'
 
 RUN groupadd $APP_USER \
     && useradd -g $APP_USER $APP_USER \
