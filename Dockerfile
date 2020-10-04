@@ -1,31 +1,45 @@
-FROM ekidd/rust-musl-builder:latest as build
+FROM rust:1.46 as builder
 
-WORKDIR /pka_site_backend
+RUN USER=root cargo new --bin pka_site_backend
 
-USER root
+WORKDIR ./pka_site_backend
 
-RUN chown -R rust:rust /pka_site_backend
+COPY ./Cargo.lock ./Cargo.lock
+COPY ./Cargo.toml ./Cargo.toml
 
-USER rust
-
-# copy over manifests
-ADD --chown=rust:rust ./Cargo.lock ./Cargo.lock
-ADD --chown=rust:rust ./Cargo.toml ./Cargo.toml
-
-ADD --chown=rust:rust ./src ./src
+RUN apt-get update \
+    && apt-get install -y cmake \
+    && rm -rf /var/lib/apt/lists/*
 
 RUN cargo build --release
+RUN rm src/*.rs
 
-ADD --chown=rust:rust pka_db.sqlite3 pka_db.sqlite3
+ADD ./src ./src
 
-FROM alpine:latest
+RUN rm ./target/release/deps/pka_site_backend*
+RUN cargo build --release
 
-RUN apk --no-cache add ca-certificates
+ADD ./pka_db.sqlite3 ./pka_db.sqlite3
 
-WORKDIR /pka_site_backend
+FROM debian:buster-slim
+ARG APP=/usr/src/app
 
-# copy build artifact from previous stage
-COPY --from=build /pka_site_backend/target/x86_64-unknown-linux-musl/release/pka_site_backend .
-COPY --from=build /pka_site_backend/pka_db.sqlite3 .
+RUN apt-get update \
+    && apt-get install -y ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV APP_USER=appuser
+
+RUN groupadd $APP_USER \
+    && useradd -g $APP_USER $APP_USER \
+    && mkdir -p ${APP}
+
+COPY --from=builder /pka_site_backend/target/release/pka_site_backend ${APP}/pka_site_backend
+COPY --from=builder /pka_site_backend/pka_db.sqlite3 ${APP}/pka_db.sqlite3
+
+RUN chown -R $APP_USER:$APP_USER ${APP}
+
+USER $APP_USER
+WORKDIR ${APP}
 
 CMD ["./pka_site_backend"]

@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use diesel::SqliteConnection;
 use indexmap::set::IndexSet;
+use mimalloc::MiMalloc;
 use tokio::sync::RwLock;
 use warp::filters::BoxedFilter;
 use warp::Filter;
@@ -51,6 +52,9 @@ lazy_static! {
     static ref YT_API_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));
     static ref PKA_EVENTS_INDEX: EventIndexType = Arc::new(RwLock::new(Vec::new()));
 }
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() {
