@@ -2,6 +2,8 @@ FROM rust:1.46 as builder
 
 RUN USER=root cargo new --bin pka_site_backend
 
+ENV RUSTFLAGS='-C target-cpu=znver2'
+
 WORKDIR ./pka_site_backend
 
 COPY ./Cargo.lock ./Cargo.lock
