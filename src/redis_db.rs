@@ -1,5 +1,8 @@
+use bb8_redis::redis::AsyncCommands;
 use bb8_redis::{bb8, RedisConnectionManager, RedisPool};
-use redis::{AsyncCommands, ErrorKind, RedisError};
+use redis::RedisError;
+
+use crate::models::errors::ApiError;
 
 pub struct RedisDb {
     connection_pool: RedisPool,
@@ -29,7 +32,7 @@ impl RedisDb {
         Ok(())
     }
 
-    pub async fn get(&self, redis_tag: String, key: String) -> Result<Vec<u8>, RedisError> {
+    pub async fn get(&self, redis_tag: String, key: String) -> Result<Vec<u8>, ApiError> {
         let pool = self.connection_pool.clone();
 
         tokio::spawn(async move {
@@ -47,10 +50,9 @@ impl RedisDb {
             let value: Vec<u8> = conn.get(&key).await?;
 
             if value.is_empty() {
-                Err(RedisError::from((
-                    ErrorKind::ClientError,
+                Err(ApiError::new_internal_error(
                     "Redis will not return empty vector.",
-                )))
+                ))
             } else {
                 Ok(value)
             }
@@ -64,12 +66,11 @@ impl RedisDb {
         redis_tag: String,
         key: String,
         value: Vec<u8>,
-    ) -> Result<(), RedisError> {
+    ) -> Result<(), ApiError> {
         if value.is_empty() {
-            return Err(RedisError::from((
-                ErrorKind::ClientError,
+            return Err(ApiError::new_internal_error(
                 "Redis will not cache empty vector.",
-            )));
+            ));
         }
 
         let pool = self.connection_pool.clone();
