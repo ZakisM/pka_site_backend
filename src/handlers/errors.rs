@@ -30,7 +30,7 @@ pub async fn handle_rejection(err: warp::Rejection) -> Result<impl Reply, Infall
         code = e.code;
         message = e.message.to_owned();
     } else {
-        error!("unhandled rejection: {:?}", err);
+        error!("Unhandled rejection: {:?}", err);
         code = StatusCode::INTERNAL_SERVER_ERROR;
         message = "INTERNAL_SERVER_ERROR".to_owned();
     }

@@ -1,4 +1,4 @@
-FROM rust:1.46 as builder
+FROM rust:latest as builder
 
 RUN USER=root cargo new --bin pka_site_backend
 

@@ -1,10 +1,11 @@
 use std::fmt;
-use std::time::SystemTimeError;
 
 use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
 use warp::http::StatusCode;
 use warp::reply::Response;
+
+use crate::convert_error;
 
 #[derive(Clone, Debug)]
 pub struct ApiError {
@@ -46,17 +47,18 @@ impl ApiError {
     }
 }
 
-impl From<std::time::SystemTimeError> for ApiError {
-    fn from(std: SystemTimeError) -> Self {
-        error!("{}", std.to_string());
-        ApiError::new("Server Time Error", StatusCode::INTERNAL_SERVER_ERROR)
+impl warp::reject::Reject for ApiError {}
+
+impl warp::Reply for ApiError {
+    fn into_response(self) -> Response {
+        let json = warp::reply::json(&self);
+        warp::reply::with_status(json, self.code).into_response()
     }
 }
 
-impl From<std::io::Error> for ApiError {
-    fn from(std: std::io::Error) -> Self {
-        error!("{}", std.to_string());
-        ApiError::new("IO Error", StatusCode::INTERNAL_SERVER_ERROR)
+impl From<ApiError> for warp::Rejection {
+    fn from(api_err: ApiError) -> Self {
+        warp::reject::custom(api_err)
     }
 }
 
@@ -75,54 +77,37 @@ impl From<diesel::result::Error> for ApiError {
     }
 }
 
-impl warp::reject::Reject for ApiError {}
+convert_error!(feed_rs::parser::ParseFeedError, "Couldn't read RSS feed.");
+convert_error!(serde_json::error::Error);
+convert_error!(regex::Error);
+convert_error!(reqwest::Error);
+convert_error!(std::string::FromUtf8Error);
+convert_error!(redis::RedisError);
+convert_error!(bb8_redis::redis::RedisError);
 
-impl warp::Reply for ApiError {
-    fn into_response(self) -> Response {
-        let json = warp::reply::json(&self);
-        warp::reply::with_status(json, self.code).into_response()
-    }
-}
+#[macro_export]
+macro_rules! convert_error {
+    ($err_type:ty) => {
+        impl From<$err_type> for ApiError {
+            fn from(err: $err_type) -> Self {
+                let err_str = err.to_string();
 
-impl From<ApiError> for warp::Rejection {
-    fn from(api_err: ApiError) -> Self {
-        warp::reject::custom(api_err)
-    }
-}
+                error!("{}", &err_str);
 
-impl From<serde_json::error::Error> for ApiError {
-    fn from(se: serde_json::error::Error) -> Self {
-        ApiError::new(se.to_string(), StatusCode::INTERNAL_SERVER_ERROR)
-    }
-}
+                ApiError::new(err_str, StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        }
+    };
 
-impl From<regex::Error> for ApiError {
-    fn from(re: regex::Error) -> Self {
-        error!("{}", re.to_string());
-        ApiError::new(re.to_string(), StatusCode::INTERNAL_SERVER_ERROR)
-    }
-}
+    ($err_type:ty, $custom_message:expr) => {
+        impl From<$err_type> for ApiError {
+            fn from(err: $err_type) -> Self {
+                let err_str = err.to_string();
 
-impl From<reqwest::Error> for ApiError {
-    fn from(req: reqwest::Error) -> Self {
-        ApiError::new(req.to_string(), StatusCode::INTERNAL_SERVER_ERROR)
-    }
-}
+                error!("{}", &err_str);
 
-impl From<feed_rs::parser::ParseFeedError> for ApiError {
-    fn from(_: feed_rs::parser::ParseFeedError) -> Self {
-        ApiError::new("Couldn't read RSS feed.", StatusCode::INTERNAL_SERVER_ERROR)
-    }
-}
-
-impl From<std::string::FromUtf8Error> for ApiError {
-    fn from(utfe: std::string::FromUtf8Error) -> Self {
-        ApiError::new(utfe.to_string(), StatusCode::INTERNAL_SERVER_ERROR)
-    }
-}
-
-impl From<redis::RedisError> for ApiError {
-    fn from(rede: redis::RedisError) -> Self {
-        ApiError::new(rede.to_string(), StatusCode::INTERNAL_SERVER_ERROR)
-    }
+                ApiError::new($custom_message, StatusCode::INTERNAL_SERVER_ERROR)
+            }
+        }
+    };
 }
