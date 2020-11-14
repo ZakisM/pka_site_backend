@@ -1,4 +1,4 @@
-use chrono::{NaiveTime, Timelike};
+use chrono::{DateTime, NaiveTime, Timelike};
 use regex::Regex;
 use reqwest::{Client, StatusCode};
 
@@ -7,10 +7,11 @@ use crate::models::errors::ApiError;
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
+use crate::models::rss_feed::YoutubeRSSFeed;
 use crate::updater::youtube_api::YoutubeAPI;
 use crate::{Repo, Result};
 
-const WOODY_YOUTUBE_RSA_FEED: &str =
+const WOODY_YOUTUBE_RSS_FEED: &str =
     "https://www.youtube.com/feeds/videos.xml?channel_id=UCIPVJoHb_A5S3kcv3TJlyEg";
 
 pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
@@ -22,23 +23,29 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
     let client = Client::new();
 
     // Check RSA feed for latest youtube link
-    let res = client.get(WOODY_YOUTUBE_RSA_FEED).send().await?;
+    let res = client.get(WOODY_YOUTUBE_RSS_FEED).send().await?;
     let data = String::from_utf8(res.bytes().await?.to_vec())?;
 
-    let c = feed_rs::parser::parse(data.as_bytes())?;
+    let rss_feed_data: YoutubeRSSFeed = serde_xml_rs::from_str(&data)?;
 
-    let (youtube_link, uploaded) = c
-        .entries
-        .into_iter()
-        .filter(|e| e.title.is_some() && e.published.is_some())
-        .find(|e| e.title.as_ref().unwrap().content.contains(&latest_episode))
-        .map(|e| {
-            (
-                e.id.replace("yt:video:", ""),
-                e.published.unwrap().timestamp(),
-            )
+    let latest_episode_lower_case = latest_episode.to_lowercase();
+
+    let (youtube_link, uploaded) = rss_feed_data
+        .entry()
+        .iter()
+        .find(|e| {
+            e.title()
+                .to_lowercase()
+                .contains(&latest_episode_lower_case)
         })
-        .ok_or_else(|| ApiError::new("Couldn't find episode", StatusCode::NOT_FOUND))?;
+        .map::<Result<_>, _>(|e| {
+            let video_id = e.video_id().to_owned();
+            let published = DateTime::parse_from_rfc3339(e.published())?;
+
+            Ok((video_id, published.timestamp()))
+        })
+        .ok_or_else(|| ApiError::new("Couldn't find episode", StatusCode::NOT_FOUND))?
+        .map_err(ApiError::from)?;
 
     // Extract data from youtube_link
     let yt_api = YoutubeAPI::new();

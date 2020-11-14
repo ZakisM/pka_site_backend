@@ -77,7 +77,8 @@ impl From<diesel::result::Error> for ApiError {
     }
 }
 
-convert_error!(feed_rs::parser::ParseFeedError, "Couldn't read RSS feed.");
+convert_error!(serde_xml_rs::Error, "Couldn't read RSS feed.");
+convert_error!(chrono::ParseError);
 convert_error!(serde_json::error::Error);
 convert_error!(regex::Error);
 convert_error!(reqwest::Error);
