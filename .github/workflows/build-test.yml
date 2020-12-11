@@ -5,6 +5,7 @@ on:
     paths-ignore:
       - 'README.md'
       - 'nginx.conf'
+      - '.github/'
     branches: [ master ]
 
 jobs:
