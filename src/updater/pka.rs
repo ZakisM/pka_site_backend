@@ -22,7 +22,7 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
 
     let client = Client::new();
 
-    // Check RSA feed for latest youtube link
+    // Check RSS feed for latest youtube link
     let res = client.get(WOODY_YOUTUBE_RSS_FEED).send().await?;
     let data = String::from_utf8(res.bytes().await?.to_vec())?;
 

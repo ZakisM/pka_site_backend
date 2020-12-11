@@ -76,10 +76,10 @@ impl YoutubeAPI {
     }
 
     pub async fn get_video_details(&self, video_id: &str) -> Result<YoutubeAPIData> {
-        let parts = vec![Part::ContentDetails, Part::Snippet];
+        let parts = [Part::ContentDetails, Part::Snippet];
 
         let part = parts
-            .into_iter()
+            .iter()
             .map(|p| {
                 let p = p.to_string();
                 p[..1].to_lowercase() + &p[1..]
