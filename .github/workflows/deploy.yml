@@ -29,6 +29,6 @@ jobs:
         with:
           file: ./Dockerfile
           push: true
-          cache-from: type=registry,ref=myorg/myrepository:latest
+          cache-from: type=registry,ref=zakism/pka-index-backend:latest
           cache-to: type=inline
           tags: zakism/pka-index-backend:latest
