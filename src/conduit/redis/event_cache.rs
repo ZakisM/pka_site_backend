@@ -5,7 +5,7 @@ pub async fn set(
     redis: &RedisDb,
     redis_tag: &str,
     key: String,
-    value: Vec<u8>,
+    value: &[u8],
 ) -> Result<(), ApiError> {
     redis.set(redis_tag.to_string(), key, value).await?;
 

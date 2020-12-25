@@ -41,7 +41,7 @@ pub fn flatbuff_from_pka_events(events: Vec<&PkaEvent>) -> Vec<u8> {
 
 #[allow(dead_code)]
 fn read_event(buf: &[u8], index: usize) -> (f32, i32, &str, i32) {
-    let e = get_root_as_all_pka_event_search_results_fb(buf);
+    let e = get_root_as_all_pka_event_search_results_fb(buf).expect("Failed to read fb root");
     let results = e.results().unwrap();
     let first_event = results.get(index);
 
