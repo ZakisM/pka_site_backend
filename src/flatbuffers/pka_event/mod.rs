@@ -20,6 +20,7 @@ pub fn flatbuff_from_pka_events(events: Vec<&PkaEvent>) -> Vec<u8> {
                 timestamp: e.timestamp(),
                 description: Some(bldr.create_string(e.description())),
                 length_seconds: e.length_seconds(),
+                upload_date: e.upload_date(),
             };
 
             PkaEventSearchResultFb::create(&mut bldr, &e_arg)
@@ -40,7 +41,7 @@ pub fn flatbuff_from_pka_events(events: Vec<&PkaEvent>) -> Vec<u8> {
 }
 
 #[allow(dead_code)]
-fn read_event(buf: &[u8], index: usize) -> (f32, i32, &str, i32) {
+fn read_event(buf: &[u8], index: usize) -> (f32, i32, &str, i32, i64) {
     let e = get_root_as_all_pka_event_search_results_fb(buf).expect("Failed to read fb root");
     let results = e.results().unwrap();
     let first_event = results.get(index);
@@ -50,6 +51,7 @@ fn read_event(buf: &[u8], index: usize) -> (f32, i32, &str, i32) {
         first_event.timestamp(),
         first_event.description().unwrap(),
         first_event.length_seconds(),
+        first_event.upload_date(),
     )
 }
 
@@ -65,6 +67,7 @@ mod tests {
             1234,
             "Zak joins the first show.".to_owned(),
             10,
+            1372377600,
         );
 
         let second_event = PkaEvent::new(
@@ -73,6 +76,7 @@ mod tests {
             5678,
             "Zak joins the second show.".to_owned(),
             300,
+            1572377600,
         );
 
         let all_events = vec![&first_event, &second_event];
@@ -81,11 +85,11 @@ mod tests {
 
         assert_eq!(
             read_event(&fb, 0),
-            (488.0, 1234, "Zak joins the first show.", 10)
+            (488.0, 1234, "Zak joins the first show.", 10, 1372377600)
         );
         assert_eq!(
             read_event(&fb, 1),
-            (489.0, 5678, "Zak joins the second show.", 300)
+            (489.0, 5678, "Zak joins the second show.", 300, 1572377600)
         );
     }
 }

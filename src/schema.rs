@@ -14,6 +14,7 @@ table! {
         timestamp -> Integer,
         description -> Text,
         length_seconds -> Integer,
+        upload_date -> BigInt,
     }
 }
 

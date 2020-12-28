@@ -21,6 +21,7 @@ pub struct PkaEvent {
     timestamp: i32,
     description: String,
     length_seconds: i32,
+    upload_date: i64,
 }
 
 impl PkaEvent {
@@ -30,6 +31,7 @@ impl PkaEvent {
         timestamp: i32,
         description: String,
         length_seconds: i32,
+        upload_date: i64,
     ) -> Self {
         PkaEvent {
             event_id,
@@ -37,6 +39,7 @@ impl PkaEvent {
             timestamp,
             description,
             length_seconds,
+            upload_date,
         }
     }
 
@@ -58,6 +61,10 @@ impl PkaEvent {
 
     pub fn length_seconds(&self) -> i32 {
         self.length_seconds
+    }
+
+    pub fn upload_date(&self) -> i64 {
+        self.upload_date
     }
 }
 
