@@ -3,6 +3,7 @@ table PkaEventSearchResultFb {
 	timestamp:int;
 	description:string;
 	length_seconds:int;
+	upload_date:long;
 }
 
 table AllPkaEventSearchResultsFb {

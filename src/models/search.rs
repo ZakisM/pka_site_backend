@@ -19,6 +19,7 @@ pub struct PkaEventSearchResult {
     timestamp: i32,
     description: String,
     length_seconds: i32,
+    upload_date: i64,
 }
 
 impl PkaEventSearchResult {
@@ -28,12 +29,14 @@ impl PkaEventSearchResult {
         timestamp: i32,
         description: S,
         length_seconds: i32,
+        upload_date: i64,
     ) -> Self {
         PkaEventSearchResult {
             episode_number,
             timestamp,
             description: description.as_ref().to_string(),
             length_seconds,
+            upload_date,
         }
     }
 }
@@ -45,6 +48,7 @@ impl From<PkaEvent> for PkaEventSearchResult {
             timestamp: e.timestamp(),
             description: e.description().to_owned(),
             length_seconds: e.length_seconds(),
+            upload_date: e.upload_date(),
         }
     }
 }

@@ -52,18 +52,19 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
 
     let details = yt_api.get_video_details(&youtube_link).await?;
 
+    let events = extract_pka_episode_events(
+        latest_episode_number,
+        &details.snippet.description,
+        &details.content_details.duration,
+        &uploaded,
+    )?;
+
     let pka_ep = PkaEpisode::new(
         latest_episode_number,
         latest_episode,
         youtube_link,
         uploaded,
     );
-
-    let events = extract_pka_episode_events(
-        latest_episode_number,
-        &details.snippet.description,
-        &details.content_details.duration,
-    )?;
 
     let youtube_details = PkaYoutubeDetails::new(
         details.id,
@@ -95,6 +96,7 @@ pub fn extract_pka_episode_events(
     ep_number: f32,
     data: &str,
     ep_length_seconds: &i32,
+    upload_date: &i64,
 ) -> Result<Vec<PkaEvent>> {
     lazy_static! {
         static ref TIMELINE_REGEX: Regex = Regex::new(r"(\d{1,2}:\d{2}:?\d*)(?:\s*-\s*)*\s*(.+)")
@@ -178,6 +180,7 @@ pub fn extract_pka_episode_events(
                 event.2,
                 event.3.clone(),
                 length_seconds,
+                *upload_date,
             )
         })
         .collect();
