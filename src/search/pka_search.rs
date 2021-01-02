@@ -21,7 +21,7 @@ pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<PkaEpisodeS
 
     let all_episodes = pka_episode::all_with_yt_details(&state).await?;
 
-    if query != "" {
+    if !query.is_empty() {
         search(query, &all_episodes)
     } else {
         Ok(all_episodes)
