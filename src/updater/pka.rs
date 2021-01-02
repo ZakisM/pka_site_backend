@@ -15,7 +15,7 @@ const WOODY_YOUTUBE_RSS_FEED: &str =
     "https://www.youtube.com/feeds/videos.xml?channel_id=UCIPVJoHb_A5S3kcv3TJlyEg";
 
 pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
-    let latest_episode_number = pka_episode::latest(state).await? + 1.0;
+    let latest_episode_number = pka_episode::latest(state).await?.floor() + 1.0;
     let latest_episode = format!("PKA {}", latest_episode_number);
 
     info!("Looking for {}.", latest_episode);
@@ -170,7 +170,7 @@ pub fn extract_pka_episode_events(
                     *ep_length_seconds - event.2
                 };
 
-            if length_seconds < 0 {
+            if length_seconds <= 0 {
                 length_seconds = 1;
             }
 

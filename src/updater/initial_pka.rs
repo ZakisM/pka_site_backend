@@ -1,19 +1,11 @@
-// use std::path::Path;
+// use std::path::{Path, PathBuf};
 //
 // use diesel::prelude::*;
-// use float_ord::FloatOrd;
 // use futures::stream::{self, StreamExt};
-// use reqwest::{Client, Url};
-// use tokio::fs::{self, File};
-// use tokio::io::AsyncWriteExt;
+// use tokio::fs::{self};
 //
-// use crate::conduit::sqlite::{pka_episode, pka_event, pka_youtube_details};
 // use crate::models::pka_episode::PkaEpisode;
-// use crate::models::pka_event::PkaEvent;
-// use crate::models::pka_youtube_details::PkaYoutubeDetails;
-// use crate::models::updater::{EpisodesFileRoot, PkaInfoRoot};
-// use crate::schema::pka_event::dsl::*;
-// use crate::updater::pka::{extract_pka_episode_events, PKA_DESCRIPTIONS_FOLDER};
+// use crate::schema::pka_episode::dsl::*;
 // use crate::updater::youtube_api::YoutubeAPI;
 // use crate::{Repo, Result};
 
@@ -252,60 +244,47 @@
 // }
 //
 // pub async fn download_all_pka_episode_descriptions(state: &Repo) -> Result<()> {
-//     let yt_api = YoutubeAPI::new();
+//     let descriptions_path = Path::new(PKA_DESCRIPTIONS_FOLDER);
 //
-//     let mut all_episodes = pka_episode::all(state).await?;
-//
-//     let dir_name = Path::new(PKA_DESCRIPTIONS_FOLDER);
-//
-//     all_episodes.retain(|ep| {
-//         ep.youtube_endpoint() != "N/A"
-//             && !Path::new(&format!(
-//                 "{}/{}.txt",
-//                 dir_name
-//                     .to_str()
-//                     .expect("Failed to convert DirEntry to string"),
-//                 ep.name()
-//             ))
-//             .exists()
-//     });
-//
-//     if !dir_name.exists() {
-//         fs::create_dir(dir_name)
+//     if !descriptions_path.exists() {
+//         fs::create_dir(descriptions_path)
 //             .await
-//             .expect("Failed to create dir");
+//             .expect("Failed to create PKA_DESCRIPTIONS_FOLDER");
 //     }
 //
-//     let bodies = stream::iter(all_episodes)
-//         .map(|ep| async {
-//             let yt_api_data = yt_api.get_video_details(&ep.youtube_endpoint()).await;
-//             (yt_api_data, ep)
+//     let yt_api = YoutubeAPI::new();
+//
+//     let all_episodes = state
+//         .run(move |conn| pka_episode.load::<PkaEpisode>(&conn))
+//         .await?
+//         .into_iter()
+//         .map(|ep| {
+//             let path: PathBuf = descriptions_path.join(format!("PKA {:03}.txt", ep.number()));
+//
+//             (ep, path)
+//         })
+//         .filter(|(ep, path)| ep.youtube_endpoint() != "N/A" && !path.exists())
+//         .collect::<Vec<_>>();
+//
+//     let mut job = stream::iter(all_episodes)
+//         .map(|(ep, path)| async {
+//             let video_data = yt_api.get_video_details(&ep.youtube_endpoint()).await;
+//             (ep, video_data, path)
 //         })
 //         .buffer_unordered(5);
 //
-//     let fut = bodies.for_each_concurrent(5, |(yt_api_data, ep)| async move {
-//         if let Ok(yt_api_data) = yt_api_data {
-//             let mut file = File::create(format!(
-//                 "{}/{}.txt",
-//                 dir_name
-//                     .to_str()
-//                     .expect("Failed to convert dir_name to String"),
-//                 ep.name()
-//             ))
-//             .await
-//             .expect("Failed to create file");
-//
-//             file.write_all(yt_api_data.snippet.description.as_bytes())
-//                 .await
-//                 .expect("Failed to write description to file");
-//
-//             println!("Downloaded: {}", ep.name());
-//         } else {
-//             println!("Failed to download description for PKA: {}", ep.number())
+//     while let Some((ep, video_data, path)) = job.next().await {
+//         match video_data {
+//             Ok(video_data) => {
+//                 if let Err(e) = fs::write(path, video_data.snippet.description).await {
+//                     eprintln!("[{}] {}", ep.number(), e);
+//                 } else {
+//                     println!("Successfully downloaded: PKA {} description", ep.number());
+//                 }
+//             }
+//             Err(e) => eprintln!("[{}] {}", ep.number(), e),
 //         }
-//     });
-//
-//     fut.await;
+//     }
 //
 //     Ok(())
 // }
