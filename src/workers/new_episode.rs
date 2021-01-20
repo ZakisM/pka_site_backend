@@ -17,6 +17,6 @@ pub async fn latest_episode(state: Arc<Repo>) {
         }
 
         //Check once every five minutes.
-        time::delay_for(Duration::from_secs(300)).await;
+        time::sleep(Duration::from_secs(300)).await;
     }
 }

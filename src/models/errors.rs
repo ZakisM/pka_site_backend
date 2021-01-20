@@ -56,19 +56,13 @@ impl warp::Reply for ApiError {
     }
 }
 
-impl From<ApiError> for warp::Rejection {
-    fn from(api_err: ApiError) -> Self {
-        warp::reject::custom(api_err)
-    }
-}
-
 impl From<diesel::result::Error> for ApiError {
     fn from(de_err: diesel::result::Error) -> Self {
         let err_string = de_err.to_string();
-        let description = de_err.to_string();
+
         error!("{}", err_string);
 
-        match description.as_str() {
+        match err_string.as_str() {
             "Record not found" | "NotFound" => {
                 ApiError::new("Data could not be found.", StatusCode::NOT_FOUND)
             }
@@ -84,7 +78,6 @@ convert_error!(regex::Error);
 convert_error!(reqwest::Error);
 convert_error!(std::string::FromUtf8Error);
 convert_error!(redis::RedisError);
-convert_error!(bb8_redis::redis::RedisError);
 
 #[macro_export]
 macro_rules! convert_error {

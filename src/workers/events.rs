@@ -20,6 +20,6 @@ pub async fn update_events(state: Arc<Repo>) {
         }
 
         //Update every minute.
-        time::delay_for(Duration::from_secs(60)).await;
+        time::sleep(Duration::from_secs(60)).await;
     }
 }
