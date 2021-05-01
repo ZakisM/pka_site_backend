@@ -8,19 +8,19 @@ use crate::models::errors::ApiError;
 use crate::Result;
 use crate::YT_API_KEY;
 
-pub struct YoutubeAPI {
+pub struct YoutubeApi {
     client: Client,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct YoutubeAPIResponse {
-    pub items: Vec<YoutubeAPIData>,
+pub struct YoutubeApiResponse {
+    pub items: Vec<YoutubeApiData>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct YoutubeAPIData {
+pub struct YoutubeApiData {
     pub id: String,
     pub snippet: Snippet,
     pub content_details: ContentDetails,
@@ -68,14 +68,14 @@ impl fmt::Display for Part {
     }
 }
 
-impl YoutubeAPI {
+impl YoutubeApi {
     pub fn new() -> Self {
         let client = Client::new();
 
-        YoutubeAPI { client }
+        YoutubeApi { client }
     }
 
-    pub async fn get_video_details(&self, video_id: &str) -> Result<YoutubeAPIData> {
+    pub async fn get_video_details(&self, video_id: &str) -> Result<YoutubeApiData> {
         let parts = [Part::ContentDetails, Part::Snippet];
 
         let part = parts
@@ -96,7 +96,7 @@ impl YoutubeAPI {
 
         let res = self.client.get(&endpoint).send().await?;
 
-        let full_data = serde_json::from_slice::<YoutubeAPIResponse>(&res.bytes().await?)?;
+        let full_data = serde_json::from_slice::<YoutubeApiResponse>(&res.bytes().await?)?;
         let data = full_data
             .items
             .get(0)

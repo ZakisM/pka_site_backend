@@ -2,11 +2,11 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename = "feed")]
-pub struct YoutubeRSSFeed {
+pub struct YoutubeRssFeed {
     entry: Vec<Entry>,
 }
 
-impl YoutubeRSSFeed {
+impl YoutubeRssFeed {
     pub fn entry(&self) -> &Vec<Entry> {
         &self.entry
     }
