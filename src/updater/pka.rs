@@ -7,8 +7,8 @@ use crate::models::errors::ApiError;
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
-use crate::models::rss_feed::YoutubeRSSFeed;
-use crate::updater::youtube_api::YoutubeAPI;
+use crate::models::rss_feed::YoutubeRssFeed;
+use crate::updater::youtube_api::YoutubeApi;
 use crate::{Repo, Result};
 
 const WOODY_YOUTUBE_RSS_FEED: &str =
@@ -26,7 +26,7 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
     let res = client.get(WOODY_YOUTUBE_RSS_FEED).send().await?;
     let data = String::from_utf8(res.bytes().await?.to_vec())?;
 
-    let rss_feed_data: YoutubeRSSFeed = serde_xml_rs::from_str(&data)?;
+    let rss_feed_data: YoutubeRssFeed = serde_xml_rs::from_str(&data)?;
 
     let latest_episode_lower_case = latest_episode.to_lowercase();
 
@@ -48,7 +48,7 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
         .map_err(ApiError::from)?;
 
     // Extract data from youtube_link
-    let yt_api = YoutubeAPI::new();
+    let yt_api = YoutubeApi::new();
 
     let details = yt_api.get_video_details(&youtube_link).await?;
 
@@ -153,6 +153,10 @@ pub fn extract_pka_episode_events(
         let event_id = format!("{:<03}-{}", ep_number, timestamp);
 
         events_without_duration.push((event_id, ep_number, timestamp, description));
+    }
+
+    if events_without_duration.is_empty() {
+        return Err(ApiError::new_internal_error("Could not find any events"));
     }
 
     //sort events by timestamp
