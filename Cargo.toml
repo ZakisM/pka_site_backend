@@ -17,14 +17,14 @@ rand = "0.8"
 lazy_static = "1.4"
 diesel = { version = "1", features = ["r2d2", "sqlite", "chrono", "extras"] }
 chrono = { version = "0.4", features = ["serde"] }
-float-ord = "0.2"
+float-ord = "0.3"
 reqwest = "0.11"
 regex = "1"
 serde-xml-rs = "0.4"
 diesel-derive-newtype = "0.1"
 iso8601-duration = "0.1"
 libsqlite3-sys = { version = "*", features = ["bundled"] }
-redis = "0.19"
-bb8-redis = "0.8"
+redis = "0.20"
+bb8-redis = "0.9"
 rayon = "1.5"
-flatbuffers = "0.8"
+flatbuffers = "2.0"
