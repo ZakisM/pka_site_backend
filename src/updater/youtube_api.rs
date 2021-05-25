@@ -31,6 +31,7 @@ pub struct YoutubeApiData {
 pub struct Snippet {
     pub title: String,
     pub description: String,
+    pub published_at: String,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
