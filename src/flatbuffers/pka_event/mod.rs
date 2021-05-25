@@ -1,7 +1,7 @@
 use flatbuffers::{FlatBufferBuilder, WIPOffset};
 
 use crate::flatbuffers::pka_event::pka_event_search_results_generated::{
-    finish_all_pka_event_search_results_fb_buffer, get_root_as_all_pka_event_search_results_fb,
+    finish_all_pka_event_search_results_fb_buffer, root_as_all_pka_event_search_results_fb,
     AllPkaEventSearchResultsFb, AllPkaEventSearchResultsFbArgs, PkaEventSearchResultFb,
     PkaEventSearchResultFbArgs,
 };
@@ -10,7 +10,7 @@ use crate::models::pka_event::PkaEvent;
 pub mod pka_event_search_results_generated;
 
 pub fn flatbuff_from_pka_events(events: Vec<&PkaEvent>) -> Vec<u8> {
-    let mut bldr = FlatBufferBuilder::new_with_capacity(events.capacity());
+    let mut bldr = FlatBufferBuilder::with_capacity(events.capacity());
 
     let events_vec: Vec<WIPOffset<PkaEventSearchResultFb>> = events
         .iter()
@@ -42,9 +42,9 @@ pub fn flatbuff_from_pka_events(events: Vec<&PkaEvent>) -> Vec<u8> {
 
 #[allow(dead_code)]
 fn read_event(buf: &[u8], index: usize) -> (f32, i32, &str, i32, i64) {
-    let e = get_root_as_all_pka_event_search_results_fb(buf).expect("Failed to read fb root");
-    let results = e.results().unwrap();
-    let first_event = results.get(index);
+    let e = root_as_all_pka_event_search_results_fb(buf);
+    let results = e.unwrap();
+    let first_event = results.results().unwrap().get(index);
 
     (
         first_event.episode_number(),

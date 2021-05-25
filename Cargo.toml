@@ -27,4 +27,4 @@ libsqlite3-sys = { version = "*", features = ["bundled"] }
 redis = "0.20"
 bb8-redis = "0.9"
 rayon = "1.5"
-flatbuffers = "0.8"
+flatbuffers = "2.0"
