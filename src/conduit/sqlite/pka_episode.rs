@@ -13,6 +13,12 @@ use crate::schema::pka_youtube_details::columns::{length_seconds, title};
 use crate::schema::pka_youtube_details::dsl::pka_youtube_details;
 use crate::{schema, Repo};
 
+#[allow(unused)]
+pub async fn all(repo: &Repo) -> Result<Vec<PkaEpisode>, Error> {
+    repo.run(move |conn| pka_episode.load::<PkaEpisode>(&conn))
+        .await
+}
+
 pub async fn find_youtube_link(repo: &Repo, id: f32) -> Result<String, Error> {
     repo.run(move |conn| {
         pka_episode

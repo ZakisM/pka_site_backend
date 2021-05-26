@@ -36,7 +36,7 @@ impl PkaEpisode {
         self.name.as_ref()
     }
 
-    pub fn youtube_endpoint(&self) -> &str {
+    pub fn youtube_link(&self) -> &str {
         self.youtube_link.as_str()
     }
 }
