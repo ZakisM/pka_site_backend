@@ -20,7 +20,7 @@ chrono = { version = "0.4", features = ["serde"] }
 float-ord = "0.3"
 reqwest = "0.11"
 regex = "1"
-serde-xml-rs = "0.4"
+quick-xml = { version = "0.22", features = ["serialize"] }
 diesel-derive-newtype = "0.1"
 iso8601-duration = "0.1"
 libsqlite3-sys = { version = "*", features = ["bundled"] }

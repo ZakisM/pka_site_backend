@@ -2,7 +2,7 @@ use warp::filters::BoxedFilter;
 use warp::Filter;
 
 use crate::models::search::SearchQuery;
-use crate::routes::path_prefix as main_prefix;
+use crate::routes::api_path_prefix as main_prefix;
 use crate::{handlers, RedisFilter, StateFilter};
 
 fn path_prefix() -> BoxedFilter<()> {
