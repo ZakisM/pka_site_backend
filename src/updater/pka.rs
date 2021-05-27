@@ -26,7 +26,7 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
     let res = client.get(WOODY_YOUTUBE_RSS_FEED).send().await?;
     let data = String::from_utf8(res.bytes().await?.to_vec())?;
 
-    let rss_feed_data: YoutubeRssFeed = serde_xml_rs::from_str(&data)?;
+    let rss_feed_data: YoutubeRssFeed = quick_xml::de::from_str(&data)?;
 
     let latest_episode_lower_case = latest_episode.to_lowercase();
 
