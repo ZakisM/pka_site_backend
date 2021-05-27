@@ -73,5 +73,8 @@ pub async fn sitemap_xml(state: Arc<Repo>) -> Result<impl warp::Reply, Rejection
 
     let sitemap = SiteMap::from_urls(urls);
 
-    Ok(sitemap.to_xml_string()?)
+    let response =
+        warp::reply::with_header(sitemap.to_xml_string()?, "content-type", "application/xml");
+
+    Ok(response)
 }
