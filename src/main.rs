@@ -7,7 +7,6 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 
-use std::collections::HashSet;
 use std::env;
 use std::sync::Arc;
 
@@ -46,7 +45,7 @@ type Result<T> = std::result::Result<T, ApiError>;
 type Repo = db::SqDatabase<SqliteConnection>;
 type StateFilter = BoxedFilter<(Arc<Repo>,)>;
 type RedisFilter = BoxedFilter<(Arc<RedisDb>,)>;
-type EventIndexType = Arc<RwLock<Vec<(HashSet<String>, PkaEvent)>>>;
+type EventIndexType = Arc<RwLock<Vec<(Vec<String>, PkaEvent)>>>;
 
 lazy_static! {
     static ref YT_API_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));

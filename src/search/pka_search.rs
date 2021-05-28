@@ -52,7 +52,7 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
     }
 }
 
-pub fn create_index<T>(items: Vec<T>) -> Vec<(HashSet<String>, T)>
+pub fn create_index<T>(items: Vec<T>) -> Vec<(Vec<String>, T)>
 where
     T: Searchable,
 {
@@ -64,18 +64,20 @@ where
     items
         .into_iter()
         .map(|evt| {
-            let mut searchable_terms: HashSet<String> = HashSet::new();
+            let mut searchable_terms_set: HashSet<String> = HashSet::new();
 
             for c in WORD_REGEX.find_iter(evt.field_to_match()) {
-                searchable_terms.insert(c.as_str().to_lowercase());
+                searchable_terms_set.insert(c.as_str().to_lowercase());
             }
+
+            let searchable_terms = searchable_terms_set.into_iter().collect();
 
             (searchable_terms, evt)
         })
         .collect()
 }
 
-fn search_index<'a, T>(query: &str, index: &'a [(HashSet<String>, T)]) -> Vec<&'a T>
+fn search_index<'a, T>(query: &str, index: &'a [(Vec<String>, T)]) -> Vec<&'a T>
 where
     T: Searchable + Sync + Send + Ord,
 {
