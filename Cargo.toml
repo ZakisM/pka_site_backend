@@ -28,3 +28,7 @@ redis = "0.20"
 bb8-redis = "0.9"
 rayon = "1.5"
 flatbuffers = "2.0"
+
+[profile.release]
+lto = 'fat'
+codegen-units = 1
