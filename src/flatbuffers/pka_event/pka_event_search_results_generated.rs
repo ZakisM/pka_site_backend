@@ -77,15 +77,15 @@ impl flatbuffers::Verifiable for PkaEventSearchResultFb<'_> {
         pos: usize,
     ) -> Result<(), flatbuffers::InvalidFlatbuffer> {
         v.visit_table(pos)?
-            .visit_field::<f32>(&"episode_number", Self::VT_EPISODE_NUMBER, false)?
-            .visit_field::<i32>(&"timestamp", Self::VT_TIMESTAMP, false)?
+            .visit_field::<f32>("episode_number", Self::VT_EPISODE_NUMBER, false)?
+            .visit_field::<i32>("timestamp", Self::VT_TIMESTAMP, false)?
             .visit_field::<flatbuffers::ForwardsUOffset<&str>>(
-                &"description",
+                "description",
                 Self::VT_DESCRIPTION,
                 false,
             )?
-            .visit_field::<i32>(&"length_seconds", Self::VT_LENGTH_SECONDS, false)?
-            .visit_field::<i64>(&"upload_date", Self::VT_UPLOAD_DATE, false)?
+            .visit_field::<i32>("length_seconds", Self::VT_LENGTH_SECONDS, false)?
+            .visit_field::<i64>("upload_date", Self::VT_UPLOAD_DATE, false)?
             .finish();
         Ok(())
     }
@@ -227,7 +227,7 @@ impl flatbuffers::Verifiable for AllPkaEventSearchResultsFb<'_> {
         v.visit_table(pos)?
             .visit_field::<flatbuffers::ForwardsUOffset<
                 flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<PkaEventSearchResultFb>>,
-            >>(&"results", Self::VT_RESULTS, false)?
+            >>("results", Self::VT_RESULTS, false)?
             .finish();
         Ok(())
     }

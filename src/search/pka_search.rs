@@ -19,7 +19,7 @@ pub trait Searchable {
 pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<PkaEpisodeSearchResult>> {
     let query = query.trim();
 
-    let all_episodes = pka_episode::all_with_yt_details(&state).await?;
+    let all_episodes = pka_episode::all_with_yt_details(state).await?;
 
     if !query.is_empty() {
         search(query, &all_episodes)
@@ -34,7 +34,7 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
     let redis_tag = "EVENTS";
 
     if query.len() > 1 {
-        match event_cache::get(&redis, redis_tag, query.to_owned()).await {
+        match event_cache::get(redis, redis_tag, query.to_owned()).await {
             Ok(results) => Ok(results),
             Err(_) => {
                 let all_events = PKA_EVENTS_INDEX.read().await;
@@ -42,7 +42,7 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
                 let events: Vec<&PkaEvent> = search_index(query, &*all_events);
                 let results = flatbuff_from_pka_events(events);
 
-                event_cache::set(&redis, redis_tag, query.to_owned(), results.as_slice()).await?;
+                event_cache::set(redis, redis_tag, query.to_owned(), results.as_slice()).await?;
 
                 Ok(results)
             }
