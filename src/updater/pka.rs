@@ -16,8 +16,9 @@ const WOODY_YOUTUBE_RSS_FEED: &str =
 
 pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
     let latest_episode_number = pka_episode::latest(state).await?.floor() + 1.0;
+    let latest_episode = format!("PKA {}", latest_episode_number);
 
-    info!("Looking for PKA {}.", latest_episode_number);
+    info!("Looking for {}.", latest_episode);
 
     let client = Client::new();
 
@@ -27,10 +28,16 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
 
     let rss_feed_data: YoutubeRssFeed = quick_xml::de::from_str(&data)?;
 
+    let latest_episode_lower_case = latest_episode.to_lowercase();
+
     let (youtube_link, uploaded) = rss_feed_data
         .entry()
         .iter()
-        .find(|e| e.title().contains(&latest_episode_number.to_string()))
+        .find(|e| {
+            e.title()
+                .to_lowercase()
+                .contains(&latest_episode_lower_case)
+        })
         .map::<Result<_>, _>(|e| {
             let video_id = e.video_id().to_owned();
             let published = DateTime::parse_from_rfc3339(e.published())?;
@@ -45,27 +52,12 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
 
     let details = yt_api.get_video_details(&youtube_link).await?;
 
-    // If it is more than 3 hours (10800 seconds) long assume it is PKA...
-    // Otherwise return an error
-    if details.content_details.duration < 10800 {
-        return Err(ApiError::new_internal_error(
-            "Found what appears to be an episode but it is less than 3 hours long.",
-        ));
-    }
-
     let events = extract_pka_episode_events(
         latest_episode_number,
         &details.snippet.description,
         &details.content_details.duration,
         &uploaded,
     )?;
-
-    let latest_episode = format!("PKA {}", latest_episode_number);
-
-    let title = details
-        .snippet
-        .title
-        .replace(&format!("KA {}", latest_episode_number), &latest_episode);
 
     let pka_ep = PkaEpisode::new(
         latest_episode_number,
@@ -77,7 +69,7 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
     let youtube_details = PkaYoutubeDetails::new(
         details.id,
         latest_episode_number,
-        title,
+        details.snippet.title,
         details.content_details.duration,
     );
 
