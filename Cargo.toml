@@ -24,8 +24,8 @@ quick-xml = { version = "0.22", features = ["serialize"] }
 diesel-derive-newtype = "0.1"
 iso8601-duration = "0.1"
 libsqlite3-sys = { version = "*", features = ["bundled"] }
-redis = "0.20"
-bb8-redis = "0.9"
+redis = "0.21"
+bb8-redis = "0.10"
 rayon = "1.5"
 flatbuffers = "2.0"
 
