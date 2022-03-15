@@ -103,7 +103,7 @@ where
 {
     let queries = query
         .split(' ')
-        .map(|q| regex::escape(q))
+        .map(regex::escape)
         .collect::<Vec<String>>();
 
     let all_regex_new = RegexSetBuilder::new(&queries)
