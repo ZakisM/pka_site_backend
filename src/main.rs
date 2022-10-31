@@ -11,6 +11,7 @@ use std::env;
 use std::sync::Arc;
 
 use diesel::SqliteConnection;
+use dotenv::dotenv;
 use tokio::sync::RwLock;
 use warp::filters::BoxedFilter;
 use warp::Filter;
@@ -54,6 +55,8 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() {
+    dotenv().ok();
+
     env::set_var("RUST_LOG", "INFO");
 
     pretty_env_logger::init_timed();
@@ -65,11 +68,12 @@ async fn main() {
             .expect("Failed to connect to redis."),
     );
 
-    let state: Arc<Repo> = Arc::new(SqDatabase::new("./pka_db.sqlite3"));
+    let state: Arc<Repo> = Arc::new(SqDatabase::new(
+        &env::var("DATABASE_URL").expect("'DATABASE_URL' is not set"),
+    ));
 
     {
-        *YT_API_KEY.write().await =
-            env::var("YT_API_KEY").expect("Youtube API key required to start.");
+        *YT_API_KEY.write().await = env::var("YT_API_KEY").expect("'YT_API_KEY' is not set.");
 
         let all_events = pka_event::all(&state)
             .await

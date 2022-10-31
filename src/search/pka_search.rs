@@ -101,10 +101,7 @@ where
     T: Searchable + Clone,
     R: std::cmp::Ord + From<T>,
 {
-    let queries = query
-        .split(' ')
-        .map(regex::escape)
-        .collect::<Vec<String>>();
+    let queries = query.split(' ').map(regex::escape).collect::<Vec<String>>();
 
     let all_regex_new = RegexSetBuilder::new(&queries)
         .case_insensitive(true)

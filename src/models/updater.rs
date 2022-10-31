@@ -16,21 +16,21 @@ pub struct EpisodeFromFile {
     timelined: bool,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaInfoRoot {
     #[serde(rename = "Timeline")]
     pub timeline: PkaInfoTimeline,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaInfoTimeline {
     #[serde(rename = "Timestamps")]
     pub timestamps: Vec<PkaInfoTimestamp>,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaInfoTimestamp {
     #[serde(rename = "HMS")]
