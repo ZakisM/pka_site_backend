@@ -1,92 +1,98 @@
-use chrono::{DateTime, NaiveTime, Timelike};
+use chrono::{NaiveTime, Timelike};
 use regex::Regex;
-use reqwest::{Client, StatusCode};
 
 use crate::conduit::sqlite::{pka_episode, pka_event, pka_youtube_details};
 use crate::models::errors::ApiError;
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
-use crate::models::rss_feed::YoutubeRssFeed;
 use crate::updater::youtube_api::YoutubeApi;
 use crate::{Repo, Result};
 
-const WOODY_YOUTUBE_RSS_FEED: &str =
-    "https://www.youtube.com/feeds/videos.xml?channel_id=UCIPVJoHb_A5S3kcv3TJlyEg";
+const WOODY_YOUTUBE_UPLOAD_PLAYLIST_ID: &str = "UUIPVJoHb_A5S3kcv3TJlyEg";
 
 pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
-    let latest_episode_number = pka_episode::latest(state).await?.floor() + 1.0;
-    let latest_episode = format!("PKA {}", latest_episode_number);
-
-    info!("Looking for {}.", latest_episode);
-
-    let client = Client::new();
-
-    // Check RSS feed for latest youtube link
-    let res = client.get(WOODY_YOUTUBE_RSS_FEED).send().await?;
-    let data = String::from_utf8(res.bytes().await?.to_vec())?;
-
-    let rss_feed_data: YoutubeRssFeed = quick_xml::de::from_str(&data)?;
-
-    let latest_episode_lower_case = latest_episode.to_lowercase();
-
-    let (youtube_link, uploaded) = rss_feed_data
-        .entry()
-        .iter()
-        .find(|e| {
-            e.title()
-                .to_lowercase()
-                .contains(&latest_episode_lower_case)
-        })
-        .map::<Result<_>, _>(|e| {
-            let video_id = e.video_id().to_owned();
-            let published = DateTime::parse_from_rfc3339(e.published())?;
-
-            Ok((video_id, published.timestamp()))
-        })
-        .ok_or_else(|| ApiError::new("Couldn't find episode", StatusCode::NOT_FOUND))?
-        .map_err(ApiError::from)?;
+    info!("Checking playlist for missing episodes.");
 
     // Extract data from youtube_link
-    let yt_api = YoutubeApi::new();
+    let yt_api = YoutubeApi::new()?;
 
-    let details = yt_api.get_video_details(&youtube_link).await?;
+    let mut uploads = yt_api
+        .get_latest_uploads(1, WOODY_YOUTUBE_UPLOAD_PLAYLIST_ID)
+        .await?;
 
-    let events = extract_pka_episode_events(
-        latest_episode_number,
-        &details.snippet.description,
-        &details.content_details.duration,
-        &uploaded,
-    )?;
-
-    let pka_ep = PkaEpisode::new(
-        latest_episode_number,
-        latest_episode,
-        youtube_link,
-        uploaded,
-    );
-
-    let youtube_details = PkaYoutubeDetails::new(
-        details.id,
-        latest_episode_number,
-        details.snippet.title,
-        details.content_details.duration,
-    );
-
-    info!("Extracted video details.");
-
-    if let Err(e) = pka_episode::insert(state, pka_ep).await {
-        error!("Error adding latest pka_ep: {}", e);
+    if uploads.items.is_empty() {
+        return Err(ApiError::new_internal_error("No playlist items found."));
     }
 
-    for evt in events.into_iter() {
-        if let Err(e) = pka_event::insert(state, evt).await {
-            error!("Error adding latest events: {}", e);
+    // Sort uploads by publish date
+    uploads
+        .items
+        .sort_by(|a, b| a.snippet.published_at.cmp(&b.snippet.published_at));
+
+    let mut required_episode_number = pka_episode::latest(state).await?.floor() + 1.0;
+
+    for upload in uploads.items.into_iter() {
+        let required_episode = format!("PKA {}", required_episode_number);
+
+        info!("Looking for {}.", required_episode);
+
+        if upload
+            .snippet
+            .title
+            .to_lowercase()
+            .contains(&required_episode.to_lowercase())
+        {
+            info!(
+                "Found {} in playlist. Attempting to extract video details.",
+                required_episode
+            );
+
+            let details = yt_api
+                .get_video_details(&upload.snippet.resource_id.video_id)
+                .await?;
+
+            let events = extract_pka_episode_events(
+                required_episode_number,
+                &details.snippet.description,
+                &details.content_details.duration,
+                &upload.snippet.published_at,
+            )?;
+
+            let pka_ep = PkaEpisode::new(
+                required_episode_number,
+                required_episode,
+                upload.snippet.resource_id.video_id,
+                upload.snippet.published_at,
+            );
+
+            let youtube_details = PkaYoutubeDetails::new(
+                details.id,
+                required_episode_number,
+                details.snippet.title,
+                details.content_details.duration,
+            );
+
+            if let Err(e) = pka_episode::insert(state, pka_ep).await {
+                error!("Error adding latest pka_ep: {}", e);
+            }
+
+            for evt in events.into_iter() {
+                if let Err(e) = pka_event::insert(state, evt).await {
+                    error!("Error adding latest events: {}", e);
+                }
+            }
+
+            if let Err(e) = pka_youtube_details::insert(state, youtube_details).await {
+                error!("Error adding latest youtube_details: {}", e);
+            }
+
+            info!("Extracted video details.");
+
+            required_episode_number += 1.0;
+        } else {
+            warn!("Could not find episode.");
         }
-    }
-
-    if let Err(e) = pka_youtube_details::insert(state, youtube_details).await {
-        error!("Error adding latest youtube_details: {}", e);
     }
 
     Ok(())
@@ -99,7 +105,7 @@ pub fn extract_pka_episode_events(
     upload_date: &i64,
 ) -> Result<Vec<PkaEvent>> {
     lazy_static! {
-        static ref TIMELINE_REGEX: Regex = Regex::new(r"(\d{1,2}(?::|;)\d{2}(?::|;)?\d*)(?:\s*-\s*)*\s*(.+)")
+        static ref TIMELINE_REGEX: Regex = Regex::new(r"(\d{1,2}:\d{2}:?\d*)(?:\s*-\s*)*\s*(.+)")
             .expect("Failed to create TIMELINE_REGEX.");
         static ref UNPADDED_MINUTE_REGEX: Regex =
             Regex::new(r#"^(\d)(?::)"#).expect("Failed to create UNPADDED_MINUTE_REGEX");
@@ -112,7 +118,6 @@ pub fn extract_pka_episode_events(
             .get(1)
             .ok_or_else(|| ApiError::new_internal_error("Failed to get time_date from regex"))?
             .as_str()
-            .replace(';', ":")
             .trim_end_matches(':')
             .to_owned();
 
