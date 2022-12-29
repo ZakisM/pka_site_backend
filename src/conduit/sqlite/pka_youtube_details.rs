@@ -8,7 +8,7 @@ pub async fn insert(repo: &Repo, details: PkaYoutubeDetails) -> Result<(), Error
     repo.run(move |conn| {
         diesel::insert_into(schema::pka_youtube_details::table)
             .values(details)
-            .execute(&conn)?;
+            .execute(conn)?;
 
         Ok(())
     })

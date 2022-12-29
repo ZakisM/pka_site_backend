@@ -11,7 +11,7 @@ fn path_prefix() -> BoxedFilter<()> {
 
 fn search_pka_episode_r(
     state: StateFilter,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     path_prefix()
         .and(warp::path("search_pka_episode"))
         .and(warp::post())
@@ -24,7 +24,7 @@ fn search_pka_episode_r(
 
 fn search_pka_event_r(
     redis: RedisFilter,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     path_prefix()
         .and(warp::path("search_pka_event"))
         .and(warp::post())
@@ -38,7 +38,7 @@ fn search_pka_event_r(
 pub fn search_routes(
     state: StateFilter,
     redis: RedisFilter,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     let state_c = || state.clone();
     let redis_c = || redis.clone();
 

@@ -6,12 +6,12 @@
 // use crate::{schema, Repo};
 
 // pub async fn all(repo: &Repo) -> Result<Vec<PkaGuest>, Error> {
-//     repo.run(move |conn| pka_guest.load::<PkaGuest>(&conn))
+//     repo.run(move |conn| pka_guest.load::<PkaGuest>(conn))
 //         .await
 // }
 //
 // pub async fn find(repo: &Repo, guest: String) -> Result<PkaGuest, Error> {
-//     repo.run(move |conn| pka_guest.find(guest).first(&conn))
+//     repo.run(move |conn| pka_guest.find(guest).first(conn))
 //         .await
 // }
 //
@@ -19,7 +19,7 @@
 //     repo.run(move |conn| {
 //         diesel::insert_into(schema::pka_guest::table)
 //             .values(episode)
-//             .execute(&conn)?;
+//             .execute(conn)?;
 //
 //         Ok(())
 //     })

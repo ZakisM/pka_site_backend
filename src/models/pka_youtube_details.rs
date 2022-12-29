@@ -6,9 +6,7 @@ use crate::schema::pka_youtube_details;
 
 #[derive(Debug, Serialize, Insertable, Queryable, Identifiable, Associations)]
 #[serde(rename_all = "camelCase")]
-#[primary_key(video_id)]
-#[belongs_to(PkaEpisode, foreign_key = "episode_number")]
-#[table_name = "pka_youtube_details"]
+#[diesel(primary_key(video_id), belongs_to(PkaEpisode, foreign_key = episode_number), table_name = pka_youtube_details)]
 pub struct PkaYoutubeDetails {
     video_id: String,
     #[serde(skip_serializing)]

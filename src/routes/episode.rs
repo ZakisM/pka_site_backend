@@ -10,7 +10,7 @@ fn path_prefix() -> BoxedFilter<()> {
 
 fn watch_pka_episode_r(
     state: StateFilter,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     path_prefix()
         .and(warp::path!("watch" / f32))
         .and(warp::get())
@@ -21,7 +21,7 @@ fn watch_pka_episode_r(
 
 fn find_pka_episode_youtube_link_r(
     state: StateFilter,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     path_prefix()
         .and(warp::path!("youtube_link" / f32))
         .and(warp::get())
@@ -32,7 +32,7 @@ fn find_pka_episode_youtube_link_r(
 
 fn latest_pka_episode_r(
     state: StateFilter,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     path_prefix()
         .and(warp::path!("watch" / "latest"))
         .and(warp::get())
@@ -43,7 +43,7 @@ fn latest_pka_episode_r(
 
 fn random_pka_episode_r(
     state: StateFilter,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     path_prefix()
         .and(warp::path!("watch" / "random"))
         .and(warp::get())
@@ -54,7 +54,7 @@ fn random_pka_episode_r(
 
 pub fn episode_routes(
     state: StateFilter,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     let state_c = || state.clone();
 
     watch_pka_episode_r(state_c())

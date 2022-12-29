@@ -8,8 +8,7 @@ use crate::schema::pka_episode;
 
 #[derive(Debug, Serialize, Insertable, Queryable, Identifiable)]
 #[serde(rename_all = "camelCase")]
-#[primary_key(number)]
-#[table_name = "pka_episode"]
+#[diesel(primary_key(number), table_name = pka_episode)]
 pub struct PkaEpisode {
     number: DieselF32,
     name: String,
