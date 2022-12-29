@@ -9,15 +9,14 @@ use crate::schema::pka_event::dsl::*;
 use crate::{schema, Repo};
 
 pub async fn all(repo: &Repo) -> Result<Vec<PkaEvent>, Error> {
-    repo.run(move |conn| pka_event.load::<PkaEvent>(&conn))
-        .await
+    repo.run(move |conn| pka_event.load::<PkaEvent>(conn)).await
 }
 
 pub async fn insert(repo: &Repo, event: PkaEvent) -> Result<(), Error> {
     repo.run(move |conn| {
         diesel::insert_into(schema::pka_event::table)
             .values(event)
-            .execute(&conn)?;
+            .execute(conn)?;
 
         Ok(())
     })
@@ -26,7 +25,7 @@ pub async fn insert(repo: &Repo, event: PkaEvent) -> Result<(), Error> {
 
 pub async fn random_amount(repo: &Repo, amount: usize) -> Result<Vec<PkaEventSearchResult>, Error> {
     repo.run(move |conn| {
-        let mut all_events = pka_event.load::<PkaEvent>(&conn)?;
+        let mut all_events = pka_event.load::<PkaEvent>(conn)?;
 
         all_events.retain(|e| {
             let des = e.description().to_lowercase();

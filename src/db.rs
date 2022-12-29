@@ -1,16 +1,16 @@
-use diesel::r2d2::{ConnectionManager, Pool, PooledConnection};
+use diesel::r2d2::{ConnectionManager, Pool, PooledConnection, R2D2Connection};
 use diesel::{r2d2, Connection};
 
 pub struct SqDatabase<T>
 where
-    T: Connection + 'static,
+    T: Connection + 'static + R2D2Connection,
 {
     connection_pool: Pool<ConnectionManager<T>>,
 }
 
 impl<T> SqDatabase<T>
 where
-    T: Connection + 'static,
+    T: Connection + 'static + R2D2Connection,
 {
     pub fn new(database_url: &str) -> Self {
         let manager = ConnectionManager::new(database_url);
@@ -27,7 +27,7 @@ where
     pub async fn run<F, R>(&self, f: F) -> R
     where
         F: 'static
-            + FnOnce(PooledConnection<ConnectionManager<T>>) -> R
+            + FnOnce(&mut PooledConnection<ConnectionManager<T>>) -> R
             + Send
             + std::marker::Unpin,
         T: Send,
@@ -35,8 +35,8 @@ where
     {
         let pool = self.connection_pool.clone();
         tokio::task::spawn_blocking(move || {
-            let connection = pool.get().expect("Failed to get connection from pool");
-            (f)(connection)
+            let mut connection = pool.get().expect("Failed to get connection from pool");
+            (f)(&mut connection)
         })
         .await
         .expect("Failed to run diesel query on threadpool")

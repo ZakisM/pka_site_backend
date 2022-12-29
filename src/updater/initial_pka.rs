@@ -49,7 +49,7 @@
 //                 .run(|conn| {
 //                     diesel::update(pka_event.filter(event_id.eq(e.event_id())))
 //                         .set(length_seconds.eq(e.length_seconds()))
-//                         .execute(&conn)
+//                         .execute(conn)
 //                 })
 //                 .await
 //             {
@@ -255,7 +255,7 @@
 //     let yt_api = YoutubeAPI::new();
 //
 //     let all_episodes = state
-//         .run(move |conn| pka_episode.load::<PkaEpisode>(&conn))
+//         .run(move |conn| pka_episode.load::<PkaEpisode>(conn))
 //         .await?
 //         .into_iter()
 //         .map(|ep| {

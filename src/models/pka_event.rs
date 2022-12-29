@@ -10,9 +10,7 @@ use crate::search::pka_search::Searchable;
 
 #[derive(Clone, Debug, Serialize, Insertable, Queryable, Associations, Identifiable)]
 #[serde(rename_all = "camelCase")]
-#[primary_key(event_id)]
-#[belongs_to(PkaEpisode, foreign_key = "episode_number")]
-#[table_name = "pka_event"]
+#[diesel(primary_key(event_id), belongs_to(PkaEpisode, foreign_key = episode_number), table_name = pka_event)]
 pub struct PkaEvent {
     #[serde(skip_serializing)]
     event_id: String,

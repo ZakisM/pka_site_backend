@@ -15,7 +15,7 @@ use crate::{schema, Repo};
 
 #[allow(unused)]
 pub async fn all(repo: &Repo) -> Result<Vec<PkaEpisode>, Error> {
-    repo.run(move |conn| pka_episode.load::<PkaEpisode>(&conn))
+    repo.run(move |conn| pka_episode.load::<PkaEpisode>(conn))
         .await
 }
 
@@ -24,7 +24,7 @@ pub async fn find_youtube_link(repo: &Repo, id: f32) -> Result<String, Error> {
         pka_episode
             .select(youtube_link)
             .find(id)
-            .first::<String>(&conn)
+            .first::<String>(conn)
     })
     .await
 }
@@ -34,7 +34,7 @@ pub async fn latest(repo: &Repo) -> Result<f32, Error> {
         pka_episode
             .select(number)
             .order_by(number.desc())
-            .first::<f32>(&conn)
+            .first::<f32>(conn)
     })
     .await
 }
@@ -44,7 +44,7 @@ pub async fn random(repo: &Repo) -> Result<f32, Error> {
         let all_episode_numbers = pka_episode
             .select(number)
             .order_by(number.desc())
-            .load::<f32>(&conn)?;
+            .load::<f32>(conn)?;
 
         Ok(*all_episode_numbers
             .choose(&mut rand::thread_rng())
@@ -59,7 +59,7 @@ pub async fn all_with_yt_details(repo: &Repo) -> Result<Vec<PkaEpisodeSearchResu
             .order_by(number.desc())
             .inner_join(pka_youtube_details)
             .select((number, upload_date, title, length_seconds))
-            .load(&conn)?;
+            .load(conn)?;
 
         Ok(all_episodes)
     })
@@ -68,15 +68,15 @@ pub async fn all_with_yt_details(repo: &Repo) -> Result<Vec<PkaEpisodeSearchResu
 
 pub async fn find_with_all(repo: &Repo, id: f32) -> Result<PkaEpisodeWithAll, Error> {
     repo.run(move |conn| {
-        let episode = pka_episode.find(id).first::<PkaEpisode>(&conn)?;
+        let episode = pka_episode.find(id).first::<PkaEpisode>(conn)?;
 
         let events = <PkaEvent as BelongingToDsl<&PkaEpisode>>::belonging_to(&episode)
             .order_by(timestamp.asc())
-            .load(&conn)?;
+            .load(conn)?;
 
         let youtube_details =
             <PkaYoutubeDetails as BelongingToDsl<&PkaEpisode>>::belonging_to(&episode)
-                .first(&conn)?;
+                .first(conn)?;
 
         Ok(PkaEpisodeWithAll::new(episode, youtube_details, events))
     })
@@ -87,7 +87,7 @@ pub async fn insert(repo: &Repo, episode: PkaEpisode) -> Result<(), Error> {
     repo.run(move |conn| {
         diesel::insert_into(schema::pka_episode::table)
             .values(episode)
-            .execute(&conn)?;
+            .execute(conn)?;
 
         Ok(())
     })
