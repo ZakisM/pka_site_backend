@@ -121,7 +121,7 @@ mod tests {
     #[test]
     fn test_read_sitemap() {
         let sitemap: SiteMap =
-            quick_xml::de::from_str(&SITEMAP_RAW).expect("Failed to read sitemap");
+            quick_xml::de::from_str(SITEMAP_RAW).expect("Failed to read sitemap");
 
         let first_url = sitemap.urls.first().unwrap();
 
