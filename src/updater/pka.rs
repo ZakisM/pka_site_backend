@@ -105,8 +105,9 @@ pub fn extract_pka_episode_events(
     upload_date: &i64,
 ) -> Result<Vec<PkaEvent>> {
     lazy_static! {
-        static ref TIMELINE_REGEX: Regex = Regex::new(r"(\d{1,2}:\d{2}:?\d*)(?:\s*-\s*)*\s*(.+)")
-            .expect("Failed to create TIMELINE_REGEX.");
+        static ref TIMELINE_REGEX: Regex =
+            Regex::new(r"(\d{1,2}(?::|;)\d{2}(?::|;)?\d*)(?:\s*-\s*)*\s*(.+)")
+                .expect("Failed to create TIMELINE_REGEX.");
         static ref UNPADDED_MINUTE_REGEX: Regex =
             Regex::new(r#"^(\d)(?::)"#).expect("Failed to create UNPADDED_MINUTE_REGEX");
     }
@@ -118,6 +119,7 @@ pub fn extract_pka_episode_events(
             .get(1)
             .ok_or_else(|| ApiError::new_internal_error("Failed to get time_date from regex"))?
             .as_str()
+            .replace(';', ":")
             .trim_end_matches(':')
             .to_owned();
 
