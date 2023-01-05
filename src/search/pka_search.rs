@@ -33,7 +33,7 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
 
     let redis_tag = "EVENTS";
 
-    if query.len() > 1 {
+    if !query.is_empty() {
         match event_cache::get(redis, redis_tag, query.to_owned()).await {
             Ok(results) => Ok(results),
             Err(_) => {
