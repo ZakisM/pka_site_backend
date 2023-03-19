@@ -34,12 +34,17 @@ where
     D: Deserializer<'de>,
 {
     let s = <String>::deserialize(deserializer)?;
-    let time = iso8601_duration::Duration::parse(&s)
-        .map_err(de::Error::custom)?
-        .to_std();
-    let time = chrono::Duration::from_std(time)
-        .map_err(de::Error::custom)?
-        .num_seconds() as i32;
+    let time = iso8601_duration::Duration::parse(&s).map_err(|e| {
+        de::Error::custom(format!(
+            "failed to parse iso8601_duration {} at {}",
+            e.input, e.position
+        ))
+    })?;
+
+    let time = time
+        .to_chrono()
+        .and_then(|t| t.num_seconds().try_into().ok())
+        .ok_or_else(|| de::Error::custom(format!("failed to convert {} to chrono", time)))?;
 
     Ok(time)
 }
@@ -49,12 +54,12 @@ mod tests {
     #[test]
     fn duration_to_seconds() {
         let s = "PT4M13S";
-        let time = iso8601_duration::Duration::parse(s)
-            .expect("Failed to convert to iso8601")
-            .to_std();
-        let time = chrono::Duration::from_std(time)
-            .expect("Failed to read time")
-            .num_seconds() as i32;
+        let time = iso8601_duration::Duration::parse(s).expect("Failed to convert to iso8601");
+
+        let time: i32 = time
+            .to_chrono()
+            .and_then(|t| t.num_seconds().try_into().ok())
+            .expect("Failed to read time");
 
         assert_eq!(time, 253);
     }

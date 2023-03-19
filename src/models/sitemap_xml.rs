@@ -3,30 +3,27 @@ use serde::{Deserialize, Serialize};
 use crate::Result;
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename = "urlset")]
+#[serde(transparent)]
 pub struct SiteMap {
-    pub xmlns: String,
-    #[serde(rename = "xmlns:image")]
-    pub xmlns_image: String,
-    #[serde(rename = "xmlns:video")]
-    pub xmlns_video: String,
-    #[serde(rename = "url")]
-    pub urls: Vec<Url>,
+    #[serde(rename = "urlset")]
+    url_set: Urlset,
 }
 
 impl SiteMap {
     pub fn from_urls(urls: Vec<Url>) -> Self {
         Self {
-            xmlns: "http://www.sitemaps.org/schemas/sitemap/0.9".to_string(),
-            xmlns_image: "http://www.google.com/schemas/sitemap-image/1.1".to_string(),
-            xmlns_video: "http://www.google.com/schemas/sitemap-video/1.1".to_string(),
-            urls,
+            url_set: Urlset {
+                xmlns: "http://www.sitemaps.org/schemas/sitemap/0.9".to_string(),
+                xmlns_image: "http://www.google.com/schemas/sitemap-image/1.1".to_string(),
+                xmlns_video: "http://www.google.com/schemas/sitemap-video/1.1".to_string(),
+                urls,
+            },
         }
     }
 
     #[allow(unused)]
     pub fn urls(&self) -> &Vec<Url> {
-        &self.urls
+        &self.url_set.urls
     }
 
     pub fn to_xml_string(&self) -> Result<String> {
@@ -37,6 +34,19 @@ impl SiteMap {
 
         Ok(xml)
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename = "urlset", rename_all = "lowercase")]
+pub struct Urlset {
+    #[serde(rename = "@xmlns")]
+    xmlns: String,
+    #[serde(rename = "@xmlns:image")]
+    xmlns_image: String,
+    #[serde(rename = "@xmlns:video")]
+    xmlns_video: String,
+    #[serde(rename = "url")]
+    urls: Vec<Url>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -123,14 +133,14 @@ mod tests {
         let sitemap: SiteMap =
             quick_xml::de::from_str(SITEMAP_RAW).expect("Failed to read sitemap");
 
-        let first_url = sitemap.urls.first().unwrap();
+        let first_url = sitemap.urls().first().unwrap();
 
         assert_eq!(&first_url.loc.0, "https://example.com/");
         assert_eq!(first_url.last_mod(), Some("2005-01-01"));
         assert_eq!(first_url.change_freq(), Some("monthly"));
         assert_eq!(first_url.priority(), Some("0.8"));
 
-        let second_url = sitemap.urls.get(1).unwrap();
+        let second_url = sitemap.urls().get(1).unwrap();
 
         assert_eq!(&second_url.loc.0, "https://example2.com/");
         assert_eq!(second_url.last_mod(), Some("2025-01-01"));
