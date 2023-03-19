@@ -22,15 +22,18 @@ To run locally:
 6. Modify `nginx.conf` from this project and replace the lines that have `YOUR_SELF_SIGNED_KEY_DIRECTORY` with the
    folder you created in the previous step. i.e `/Users/zak/Selfsigned/`
 7. Install `nginx` and create the directories `sites-enabled` and `sites-available` in your `/etc/nginx` directory.
-8. Modify `nginx.conf` so that your `http` block includes this line: `include sites-available/*;`;
-9. Start `nginx`.
-10. Generate YouTube API key from https://console.developers.google.com/ and save as env variable named: YT_API_KEY. Can
+8. Copy the contents from `nginx.conf` into a file called `pkaindextest.com` inside `sites-availabled`
+9. Create a symbolic link between the file in `sites-available` and `sites-enabled` using the
+   command: `ln -s /opt/homebrew/etc/nginx/sites-available/pkaindextest.com /opt/homebrew/etc/nginx/sites-enabled/pkaindextest.com`
+10. Modify `nginx.conf` in your system so that your `http` block includes this line: `include sites-available/*;`;
+11. Start `nginx`.
+12. Generate YouTube API key from https://console.developers.google.com/ and save as env variable named: YT_API_KEY. Can
     pass empty string if you want however this means episodes won't be updated.
-11. Run the rust server
+13. Run the rust server
     - To run in debug mode: run `cargo run` from project root.
     - To run in release (optimized) mode: run `cargo run --release` from project root.
-12. Rust should now be serving an API from http://0.0.0.0:1234.
-13. Visit https://pkaindextest.com in your browser. (Firefox will work but for Chrome you will need to import the Self
+14. Rust should now be serving an API from http://0.0.0.0:1234.
+15. Visit https://pkaindextest.com in your browser. (Firefox will work but for Chrome you will need to import the Self
     Signed SSL certificate manually.)
 
 #### Test With Docker - Note this is creating an optimized build so not suitable for development.
