@@ -10,7 +10,7 @@ COPY ./.env ./.env
 COPY ./pka_db.sqlite3 ./pka_db.sqlite3
 RUN cargo build --release
 
-FROM gcr.io/distroless/cc-debian11
+FROM gcr.io/distroless/cc-debian12
 COPY --from=builder /app/target/release/pka_site_backend /
 COPY --from=builder /app/.env /
 COPY --from=builder /app/data data
