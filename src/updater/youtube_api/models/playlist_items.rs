@@ -44,7 +44,6 @@ pub struct Thumbnails {
     pub medium: Medium,
     pub high: High,
     pub standard: Standard,
-    pub maxres: Maxres,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
