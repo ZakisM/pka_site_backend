@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 use diesel::SqliteConnection;
 use dotenv::dotenv;
+use mimalloc::MiMalloc;
 use tokio::sync::RwLock;
 use warp::filters::BoxedFilter;
 use warp::Filter;
@@ -46,12 +47,16 @@ type Result<T> = std::result::Result<T, ApiError>;
 type Repo = db::SqDatabase<SqliteConnection>;
 type StateFilter = BoxedFilter<(Arc<Repo>,)>;
 type RedisFilter = BoxedFilter<(Arc<RedisDb>,)>;
-type EventIndexType = Arc<RwLock<Vec<(Vec<String>, PkaEvent)>>>;
+type EventIndexType = Arc<RwLock<Box<[(Box<[String]>, PkaEvent)]>>>;
 
 lazy_static! {
     static ref YT_API_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));
-    static ref PKA_EVENTS_INDEX: EventIndexType = Arc::new(RwLock::new(Vec::new()));
+    static ref PKA_EVENTS_INDEX: EventIndexType =
+        Arc::new(RwLock::new(Vec::new().into_boxed_slice()));
 }
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() {

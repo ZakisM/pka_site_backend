@@ -31,6 +31,7 @@ flatbuffers = "23.1.21"
 dotenv = "0.15.0"
 strum = "0.24.1"
 strum_macros = "0.24.3"
+mimalloc = "0.1.39"
 
 [profile.release]
 lto = 'fat'

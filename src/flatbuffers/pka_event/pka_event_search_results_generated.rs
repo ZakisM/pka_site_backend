@@ -328,8 +328,8 @@ pub fn root_as_all_pka_event_search_results_fb(
     flatbuffers::root::<AllPkaEventSearchResultsFb>(buf)
 }
 #[inline]
-pub fn finish_all_pka_event_search_results_fb_buffer<'a, 'b>(
-    fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+pub fn finish_all_pka_event_search_results_fb_buffer<'a>(
+    fbb: &mut flatbuffers::FlatBufferBuilder<'a>,
     root: flatbuffers::WIPOffset<AllPkaEventSearchResultsFb<'a>>,
 ) {
     fbb.finish(root, None);

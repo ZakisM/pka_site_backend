@@ -52,7 +52,7 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
     }
 }
 
-pub fn create_index<T>(items: Vec<T>) -> Vec<(Vec<String>, T)>
+pub fn create_index<T>(items: Vec<T>) -> Box<[(Box<[String]>, T)]>
 where
     T: Searchable,
 {
@@ -70,14 +70,18 @@ where
                 searchable_terms_set.insert(c.as_str().to_lowercase());
             }
 
-            let searchable_terms = searchable_terms_set.into_iter().collect();
+            let searchable_terms = searchable_terms_set
+                .into_iter()
+                .collect::<Vec<String>>()
+                .into_boxed_slice();
 
             (searchable_terms, evt)
         })
-        .collect()
+        .collect::<Vec<_>>()
+        .into_boxed_slice()
 }
 
-fn search_index<'a, T>(query: &str, index: &'a [(Vec<String>, T)]) -> Vec<&'a T>
+fn search_index<'a, T>(query: &str, index: &'a [(Box<[String]>, T)]) -> Vec<&'a T>
 where
     T: Searchable + Sync + Send + Ord,
 {
