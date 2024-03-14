@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 
+use compact_str::CompactString;
 use float_ord::FloatOrd;
 use serde::Serialize;
 
@@ -11,14 +12,19 @@ use crate::schema::pka_episode;
 #[diesel(primary_key(number), table_name = pka_episode)]
 pub struct PkaEpisode {
     number: DieselF32,
-    name: String,
+    name: CompactString,
     #[serde(skip_serializing)]
-    youtube_link: String,
+    youtube_link: CompactString,
     upload_date: i64,
 }
 
 impl PkaEpisode {
-    pub fn new(number: f32, name: String, youtube_link: String, upload_date: i64) -> Self {
+    pub fn new(
+        number: f32,
+        name: CompactString,
+        youtube_link: CompactString,
+        upload_date: i64,
+    ) -> Self {
         Self {
             number: DieselF32(number),
             name,
@@ -48,7 +54,7 @@ impl std::cmp::Ord for PkaEpisode {
 
 impl std::cmp::PartialOrd for PkaEpisode {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        FloatOrd(self.number.0).partial_cmp(&FloatOrd(other.number.0))
+        Some(self.cmp(other))
     }
 }
 

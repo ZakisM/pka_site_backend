@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 
+use compact_str::CompactString;
 use float_ord::FloatOrd;
 use serde::Serialize;
 
@@ -13,21 +14,21 @@ use crate::search::pka_search::Searchable;
 #[diesel(primary_key(event_id), belongs_to(PkaEpisode, foreign_key = episode_number), table_name = pka_event)]
 pub struct PkaEvent {
     #[serde(skip_serializing)]
-    event_id: String,
+    event_id: CompactString,
     #[serde(skip_serializing)]
     episode_number: DieselF32,
     timestamp: i32,
-    description: String,
+    description: CompactString,
     length_seconds: i32,
     upload_date: i64,
 }
 
 impl PkaEvent {
     pub fn new(
-        event_id: String,
+        event_id: CompactString,
         episode_number: f32,
         timestamp: i32,
-        description: String,
+        description: CompactString,
         length_seconds: i32,
         upload_date: i64,
     ) -> Self {
@@ -45,7 +46,7 @@ impl PkaEvent {
         self.episode_number.0
     }
 
-    pub fn event_id(&self) -> String {
+    pub fn event_id(&self) -> CompactString {
         self.event_id.to_owned()
     }
 
@@ -80,7 +81,7 @@ impl std::cmp::Ord for PkaEvent {
 
 impl std::cmp::PartialOrd for PkaEvent {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        FloatOrd(self.episode_number()).partial_cmp(&FloatOrd(other.episode_number()))
+        Some(self.cmp(other))
     }
 }
 

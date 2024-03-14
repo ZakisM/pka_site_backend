@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use compact_str::{CompactString, ToCompactString};
 use rayon::prelude::*;
 use regex::{Regex, RegexSetBuilder};
 
@@ -52,7 +53,7 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
     }
 }
 
-pub fn create_index<T>(items: Vec<T>) -> Box<[(Box<[String]>, T)]>
+pub fn create_index<T>(items: Vec<T>) -> Box<[(Box<[CompactString]>, T)]>
 where
     T: Searchable,
 {
@@ -64,15 +65,16 @@ where
     items
         .into_iter()
         .map(|evt| {
-            let mut searchable_terms_set: HashSet<String> = HashSet::new();
+            let mut searchable_terms_set: HashSet<CompactString, ahash::RandomState> =
+                HashSet::default();
 
             for c in WORD_REGEX.find_iter(evt.field_to_match()) {
-                searchable_terms_set.insert(c.as_str().to_lowercase());
+                searchable_terms_set.insert(c.as_str().to_lowercase().to_compact_string());
             }
 
             let searchable_terms = searchable_terms_set
                 .into_iter()
-                .collect::<Vec<String>>()
+                .collect::<Vec<CompactString>>()
                 .into_boxed_slice();
 
             (searchable_terms, evt)
@@ -81,7 +83,7 @@ where
         .into_boxed_slice()
 }
 
-fn search_index<'a, T>(query: &str, index: &'a [(Box<[String]>, T)]) -> Vec<&'a T>
+fn search_index<'a, T>(query: &str, index: &'a [(Box<[CompactString]>, T)]) -> Vec<&'a T>
 where
     T: Searchable + Sync + Send + Ord,
 {
@@ -105,7 +107,11 @@ where
     T: Searchable + Clone,
     R: std::cmp::Ord + From<T>,
 {
-    let queries = query.split(' ').map(regex::escape).collect::<Vec<String>>();
+    let queries = query
+        .split(' ')
+        .map(regex::escape)
+        .map(CompactString::from)
+        .collect::<Vec<CompactString>>();
 
     let all_regex_new = RegexSetBuilder::new(&queries)
         .case_insensitive(true)

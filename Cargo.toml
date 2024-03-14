@@ -32,6 +32,11 @@ dotenv = "0.15.0"
 strum = "0.24.1"
 strum_macros = "0.24.3"
 mimalloc = "0.1.39"
+ahash = "0.8.11"
+compact_str = { git = "https://github.com/ParkMyCar/compact_str", rev = "20c15209fab00150b929b53f42326ca96e543f01", features = [
+  "serde",
+  "diesel",
+] }
 
 [profile.release]
 lto = 'fat'
