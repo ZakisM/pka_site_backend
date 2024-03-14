@@ -57,24 +57,26 @@ fn read_event(buf: &[u8], index: usize) -> (f32, i32, &str, i32, i64) {
 
 #[cfg(test)]
 mod tests {
+    use compact_str::ToCompactString;
+
     use super::*;
 
     #[test]
     fn read_events() {
         let first_event = PkaEvent::new(
-            "488-1234".to_owned(),
+            "488-1234".to_compact_string(),
             488.0,
             1234,
-            "Zak joins the first show.".to_owned(),
+            "Zak joins the first show.".to_compact_string(),
             10,
             1372377600,
         );
 
         let second_event = PkaEvent::new(
-            "489-5678".to_owned(),
+            "489-5678".to_compact_string(),
             489.0,
             5678,
-            "Zak joins the second show.".to_owned(),
+            "Zak joins the second show.".to_compact_string(),
             300,
             1572377600,
         );

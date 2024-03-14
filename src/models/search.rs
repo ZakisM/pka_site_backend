@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 
+use compact_str::{CompactString, ToCompactString};
 use float_ord::FloatOrd;
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +10,7 @@ use crate::search::pka_search::Searchable;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchQuery {
-    pub query: String,
+    pub query: CompactString,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -17,7 +18,7 @@ pub struct SearchQuery {
 pub struct PkaEventSearchResult {
     episode_number: f32,
     timestamp: i32,
-    description: String,
+    description: CompactString,
     length_seconds: i32,
     upload_date: i64,
 }
@@ -34,7 +35,7 @@ impl PkaEventSearchResult {
         PkaEventSearchResult {
             episode_number,
             timestamp,
-            description: description.as_ref().to_string(),
+            description: description.as_ref().to_compact_string(),
             length_seconds,
             upload_date,
         }
@@ -46,7 +47,7 @@ impl From<PkaEvent> for PkaEventSearchResult {
         Self {
             episode_number: e.episode_number(),
             timestamp: e.timestamp(),
-            description: e.description().to_owned(),
+            description: e.description().to_compact_string(),
             length_seconds: e.length_seconds(),
             upload_date: e.upload_date(),
         }
@@ -61,7 +62,7 @@ impl std::cmp::Ord for PkaEventSearchResult {
 
 impl std::cmp::PartialOrd for PkaEventSearchResult {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        FloatOrd(self.episode_number).partial_cmp(&FloatOrd(other.episode_number))
+        Some(self.cmp(other))
     }
 }
 
@@ -78,7 +79,7 @@ impl std::cmp::Eq for PkaEventSearchResult {}
 pub struct PkaEpisodeSearchResult {
     episode_number: f32,
     upload_date: i64,
-    title: String,
+    title: CompactString,
     length_seconds: i32,
 }
 
@@ -96,7 +97,7 @@ impl std::cmp::Ord for PkaEpisodeSearchResult {
 
 impl std::cmp::PartialOrd for PkaEpisodeSearchResult {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        FloatOrd(self.episode_number).partial_cmp(&FloatOrd(other.episode_number))
+        Some(self.cmp(other))
     }
 }
 

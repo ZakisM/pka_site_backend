@@ -1,3 +1,4 @@
+use compact_str::CompactString;
 use diesel::prelude::*;
 use diesel::result::Error;
 use rand::seq::SliceRandom;
@@ -19,12 +20,12 @@ pub async fn all(repo: &Repo) -> Result<Vec<PkaEpisode>, Error> {
         .await
 }
 
-pub async fn find_youtube_link(repo: &Repo, id: f32) -> Result<String, Error> {
+pub async fn find_youtube_link(repo: &Repo, id: f32) -> Result<CompactString, Error> {
     repo.run(move |conn| {
         pka_episode
             .select(youtube_link)
             .find(id)
-            .first::<String>(conn)
+            .first::<CompactString>(conn)
     })
     .await
 }

@@ -1,3 +1,4 @@
+use compact_str::CompactString;
 use serde::{de, Deserialize, Deserializer, Serialize};
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -9,7 +10,7 @@ pub struct VideosResponse {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VideosItem {
-    pub id: String,
+    pub id: CompactString,
     pub snippet: Snippet,
     pub content_details: ContentDetails,
 }
@@ -17,9 +18,9 @@ pub struct VideosItem {
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Snippet {
-    pub title: String,
-    pub description: String,
-    pub published_at: String,
+    pub title: CompactString,
+    pub description: CompactString,
+    pub published_at: CompactString,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -33,7 +34,7 @@ fn duration_as_seconds<'de, D>(deserializer: D) -> std::result::Result<i32, D::E
 where
     D: Deserializer<'de>,
 {
-    let s = <String>::deserialize(deserializer)?;
+    let s = <CompactString>::deserialize(deserializer)?;
     let time = iso8601_duration::Duration::parse(&s).map_err(|e| {
         de::Error::custom(format!(
             "failed to parse iso8601_duration {} at {}",

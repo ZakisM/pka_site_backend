@@ -1,3 +1,4 @@
+use compact_str::CompactString;
 use serde::Serialize;
 
 use crate::models::diesel_f32::DieselF32;
@@ -8,15 +9,20 @@ use crate::schema::pka_youtube_details;
 #[serde(rename_all = "camelCase")]
 #[diesel(primary_key(video_id), belongs_to(PkaEpisode, foreign_key = episode_number), table_name = pka_youtube_details)]
 pub struct PkaYoutubeDetails {
-    video_id: String,
+    video_id: CompactString,
     #[serde(skip_serializing)]
     episode_number: DieselF32,
-    title: String,
+    title: CompactString,
     length_seconds: i32,
 }
 
 impl PkaYoutubeDetails {
-    pub fn new(video_id: String, episode_number: f32, title: String, length_seconds: i32) -> Self {
+    pub fn new(
+        video_id: CompactString,
+        episode_number: f32,
+        title: CompactString,
+        length_seconds: i32,
+    ) -> Self {
         PkaYoutubeDetails {
             video_id,
             episode_number: DieselF32(episode_number),

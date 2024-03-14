@@ -15,9 +15,9 @@ impl YoutubeRssFeed {
 #[derive(Debug, Deserialize)]
 pub struct Entry {
     #[serde(rename = "videoId")]
-    video_id: String,
-    title: String,
-    published: String,
+    video_id: CompactString,
+    title: CompactString,
+    published: CompactString,
 }
 
 impl Entry {

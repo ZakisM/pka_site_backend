@@ -2,6 +2,8 @@ mod models;
 
 use std::time::Duration;
 
+use compact_str::CompactString;
+use compact_str::ToCompactString;
 use reqwest::Client;
 use reqwest::ClientBuilder;
 use strum_macros::Display;
@@ -45,8 +47,8 @@ impl YoutubeApi {
 
         let part = parts
             .iter()
-            .map(|p| p.to_string())
-            .collect::<Vec<String>>()
+            .map(|p| p.to_compact_string())
+            .collect::<Vec<CompactString>>()
             .join(",");
 
         let endpoint = format!(
@@ -84,7 +86,7 @@ impl YoutubeApi {
         let full_data = serde_json::from_slice::<VideosResponse>(&res.bytes().await?)?;
         let data = full_data
             .items
-            .get(0)
+            .first()
             .ok_or_else(|| ApiError::new_internal_error("Couldn't find video in item list."))?;
 
         Ok(data.to_owned())

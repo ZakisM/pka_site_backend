@@ -10,6 +10,7 @@ extern crate log;
 use std::env;
 use std::sync::Arc;
 
+use compact_str::CompactString;
 use diesel::SqliteConnection;
 use dotenv::dotenv;
 use mimalloc::MiMalloc;
@@ -47,7 +48,7 @@ type Result<T> = std::result::Result<T, ApiError>;
 type Repo = db::SqDatabase<SqliteConnection>;
 type StateFilter = BoxedFilter<(Arc<Repo>,)>;
 type RedisFilter = BoxedFilter<(Arc<RedisDb>,)>;
-type EventIndexType = Arc<RwLock<Box<[(Box<[String]>, PkaEvent)]>>>;
+type EventIndexType = Arc<RwLock<Box<[(Box<[CompactString]>, PkaEvent)]>>>;
 
 lazy_static! {
     static ref YT_API_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));

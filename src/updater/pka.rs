@@ -1,4 +1,5 @@
 use chrono::{NaiveTime, Timelike};
+use compact_str::{CompactString, ToCompactString};
 use regex::Regex;
 
 use crate::conduit::sqlite::{pka_episode, pka_event, pka_youtube_details};
@@ -33,7 +34,7 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
     let mut required_episode_number = pka_episode::latest(state).await?.floor() + 1.0;
 
     for upload in uploads.items.into_iter() {
-        let required_episode = format!("PKA {}", required_episode_number);
+        let required_episode = format!("PKA {}", required_episode_number).to_compact_string();
 
         info!("Looking for {}.", required_episode);
 
@@ -41,7 +42,7 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
             .snippet
             .title
             .to_lowercase()
-            .contains(&required_episode.to_lowercase())
+            .contains(required_episode.to_lowercase().as_str())
         {
             info!(
                 "Found {} in playlist. Attempting to extract video details.",
@@ -112,7 +113,7 @@ pub fn extract_pka_episode_events(
             Regex::new(r#"^(\d)(?::)"#).expect("Failed to create UNPADDED_MINUTE_REGEX");
     }
 
-    let mut events_without_duration: Vec<(String, f32, i32, String)> = Vec::new();
+    let mut events_without_duration: Vec<(CompactString, f32, i32, CompactString)> = Vec::new();
 
     for result in TIMELINE_REGEX.captures_iter(data) {
         let mut time_date = result
@@ -156,9 +157,9 @@ pub fn extract_pka_episode_events(
             .replace("â€“", "–")
             .replace("â€œ", "“")
             .replace("â€", "”")
-            .to_owned();
+            .to_compact_string();
 
-        let event_id = format!("{:<03}-{}", ep_number, timestamp);
+        let event_id = format!("{:<03}-{}", ep_number, timestamp).to_compact_string();
 
         events_without_duration.push((event_id, ep_number, timestamp, description));
     }
