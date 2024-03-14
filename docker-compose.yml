@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
   app:
-    image: zakism/pka-index-backend:latest
+    image: zakism/pka-index-backend:master
     depends_on:
       - redis
     volumes:
-      - ./pka_index_data:/data
+      - ./pka_index_data:/app/data
     environment:
       - YT_API_KEY=$YT_API_KEY
     ports:
