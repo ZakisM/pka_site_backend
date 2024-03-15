@@ -74,7 +74,6 @@ impl From<diesel::result::Error> for ApiError {
 convert_error!(quick_xml::DeError);
 convert_error!(chrono::ParseError);
 convert_error!(serde_json::error::Error);
-convert_error!(regex::Error);
 convert_error!(reqwest::Error);
 convert_error!(std::string::FromUtf8Error);
 convert_error!(redis::RedisError);

@@ -10,7 +10,6 @@ extern crate log;
 use std::env;
 use std::sync::Arc;
 
-use compact_str::CompactString;
 use diesel::SqliteConnection;
 use dotenv::dotenv;
 use mimalloc::MiMalloc;
@@ -28,7 +27,6 @@ use crate::routes::episode::episode_routes;
 use crate::routes::events::event_routes;
 use crate::routes::search::search_routes;
 use crate::routes::static_files::static_files_routes;
-use crate::search::pka_search::create_index;
 use crate::workers::events::update_events;
 use crate::workers::new_episode::latest_episode;
 
@@ -48,12 +46,11 @@ type Result<T> = std::result::Result<T, ApiError>;
 type Repo = db::SqDatabase<SqliteConnection>;
 type StateFilter = BoxedFilter<(Arc<Repo>,)>;
 type RedisFilter = BoxedFilter<(Arc<RedisDb>,)>;
-type EventIndexType = Arc<RwLock<Box<[(Box<[CompactString]>, PkaEvent)]>>>;
+type EventIndexType = Arc<RwLock<Box<[PkaEvent]>>>;
 
 lazy_static! {
     static ref YT_API_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));
-    static ref PKA_EVENTS_INDEX: EventIndexType =
-        Arc::new(RwLock::new(Vec::new().into_boxed_slice()));
+    static ref PKA_EVENTS_INDEX: EventIndexType = Arc::new(RwLock::new(Box::default()));
 }
 
 #[global_allocator]
@@ -85,7 +82,7 @@ async fn main() {
             .await
             .expect("Failed to add all PKA events");
 
-        *PKA_EVENTS_INDEX.write().await = create_index(all_events);
+        *PKA_EVENTS_INDEX.write().await = all_events.into_boxed_slice();
     }
 
     // workers

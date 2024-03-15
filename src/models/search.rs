@@ -85,7 +85,7 @@ pub struct PkaEpisodeSearchResult {
 
 impl Searchable for PkaEpisodeSearchResult {
     fn field_to_match(&self) -> &str {
-        self.title.as_ref()
+        self.title.as_str()
     }
 }
 

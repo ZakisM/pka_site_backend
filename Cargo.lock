@@ -1153,6 +1153,7 @@ name = "pka_site_backend"
 version = "0.1.0"
 dependencies = [
  "ahash",
+ "aho-corasick",
  "bb8-redis",
  "chrono",
  "compact_str",

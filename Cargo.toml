@@ -37,6 +37,7 @@ compact_str = { git = "https://github.com/ParkMyCar/compact_str", rev = "20c1520
   "serde",
   "diesel",
 ] }
+aho-corasick = "1.1.2"
 
 [profile.release]
 lto = 'fat'
