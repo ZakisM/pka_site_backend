@@ -1,13 +1,10 @@
-use std::collections::HashSet;
-
-use compact_str::{CompactString, ToCompactString};
+use ahash::AHashSet;
+use aho_corasick::AhoCorasickBuilder;
 use rayon::prelude::*;
-use regex::{Regex, RegexSetBuilder};
 
 use crate::conduit::redis::event_cache;
 use crate::conduit::sqlite::pka_episode;
 use crate::flatbuffers::pka_event::flatbuff_from_pka_events;
-use crate::models::pka_event::PkaEvent;
 use crate::models::search::PkaEpisodeSearchResult;
 use crate::redis_db::RedisDb;
 use crate::PKA_EVENTS_INDEX;
@@ -23,7 +20,9 @@ pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<PkaEpisodeS
     let all_episodes = pka_episode::all_with_yt_details(state).await?;
 
     if !query.is_empty() {
-        search(query, &all_episodes)
+        let results = search(query, &all_episodes);
+
+        Ok(results.into_iter().cloned().collect())
     } else {
         Ok(all_episodes)
     }
@@ -32,98 +31,53 @@ pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<PkaEpisodeS
 pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
     let query = query.trim();
 
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
+
     let redis_tag = "EVENTS";
 
-    if !query.is_empty() {
-        match event_cache::get(redis, redis_tag, query.to_owned()).await {
-            Ok(results) => Ok(results),
-            Err(_) => {
-                let all_events = PKA_EVENTS_INDEX.read().await;
+    match event_cache::get(redis, redis_tag, query.to_owned()).await {
+        Ok(results) => Ok(results),
+        Err(_) => {
+            let all_events = PKA_EVENTS_INDEX.read().await;
 
-                let events: Vec<&PkaEvent> = search_index(query, &all_events);
-                let results = flatbuff_from_pka_events(events);
+            let events = search(query, &all_events);
+            let results = flatbuff_from_pka_events(events);
 
-                event_cache::set(redis, redis_tag, query.to_owned(), results.as_slice()).await?;
+            event_cache::set(redis, redis_tag, query.to_owned(), results.as_slice()).await?;
 
-                Ok(results)
-            }
+            Ok(results)
         }
-    } else {
-        Ok(Vec::new())
     }
 }
 
-pub fn create_index<T>(items: Vec<T>) -> Box<[(Box<[CompactString]>, T)]>
+fn search<'a, T>(query: &str, items: &'a [T]) -> Vec<&'a T>
 where
-    T: Searchable,
+    T: Searchable + Ord + Send + Sync,
 {
-    lazy_static! {
-        static ref WORD_REGEX: Regex =
-            Regex::new(r"([^\s]+)").expect("Failed to create WORD_REGEX.");
-    }
+    let patterns = query.split_ascii_whitespace();
+    let patterns_len = patterns.clone().count();
 
-    items
-        .into_iter()
-        .map(|evt| {
-            let mut searchable_terms_set: HashSet<CompactString, ahash::RandomState> =
-                HashSet::default();
+    let ac = AhoCorasickBuilder::new()
+        .ascii_case_insensitive(true)
+        .build(patterns)
+        .expect("Failed to build aho_corasick");
 
-            for c in WORD_REGEX.find_iter(evt.field_to_match()) {
-                searchable_terms_set.insert(c.as_str().to_lowercase().to_compact_string());
-            }
-
-            let searchable_terms = searchable_terms_set
-                .into_iter()
-                .collect::<Vec<CompactString>>()
-                .into_boxed_slice();
-
-            (searchable_terms, evt)
-        })
-        .collect::<Vec<_>>()
-        .into_boxed_slice()
-}
-
-fn search_index<'a, T>(query: &str, index: &'a [(Box<[CompactString]>, T)]) -> Vec<&'a T>
-where
-    T: Searchable + Sync + Send + Ord,
-{
-    let query = query.to_lowercase();
-
-    let queries = query.split(' ').collect::<Vec<&str>>();
-
-    let mut results: Vec<&T> = index
+    let mut results = items
         .par_iter()
-        .filter(|(ids, _)| queries.iter().all(|q| ids.iter().any(|i| i.contains(q))))
-        .map(|(_, evt)| evt)
-        .collect();
+        .filter(|item| {
+            ac.find_iter(item.field_to_match())
+                .fold(AHashSet::default(), |mut curr, next| {
+                    curr.insert(next.pattern());
+                    curr
+                })
+                .len()
+                == patterns_len
+        })
+        .collect::<Vec<_>>();
 
     results.sort();
 
     results
-}
-
-fn search<T, R>(query: &str, items: &[T]) -> Result<Vec<R>>
-where
-    T: Searchable + Clone,
-    R: std::cmp::Ord + From<T>,
-{
-    let queries = query
-        .split(' ')
-        .map(regex::escape)
-        .map(CompactString::from)
-        .collect::<Vec<CompactString>>();
-
-    let all_regex_new = RegexSetBuilder::new(&queries)
-        .case_insensitive(true)
-        .build()?;
-
-    let mut results: Vec<R> = items
-        .iter()
-        .filter(|i| all_regex_new.matches(i.field_to_match()).iter().count() == queries.len())
-        .map(|res| R::from(res.to_owned()))
-        .collect();
-
-    results.sort();
-
-    Ok(results)
 }
