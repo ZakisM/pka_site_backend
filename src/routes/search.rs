@@ -15,7 +15,7 @@ fn search_pka_episode_r(
     path_prefix()
         .and(warp::path("search_pka_episode"))
         .and(warp::post())
-        .and(warp::body::content_length_limit(32))
+        .and(warp::body::content_length_limit(64))
         .and(warp::body::json::<SearchQuery>())
         .and(state)
         .and_then(handlers::search::search_pka_episode)
