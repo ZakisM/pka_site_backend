@@ -1,4 +1,3 @@
-use ahash::AHashSet;
 use aho_corasick::AhoCorasickBuilder;
 use rayon::prelude::*;
 
@@ -57,7 +56,15 @@ where
     T: Searchable + Ord + Send + Sync,
 {
     let patterns = query.split_ascii_whitespace();
-    let patterns_len = patterns.clone().count();
+
+    // Set all the bits to 1 for pattern_id,
+    // i.e 3 patterns = (1 << 3) - 1
+    // So 0b0000_1000 - 0b0000_0001:
+    // 1000 -
+    // 0001 =
+    // 0111
+    // Which is 0b0000_0111 <- The three bits for the pattern we've "seen"
+    let seen = (1_u64 << patterns.clone().count()) - 1;
 
     let ac = AhoCorasickBuilder::new()
         .ascii_case_insensitive(true)
@@ -67,13 +74,26 @@ where
     let mut results = items
         .par_iter()
         .filter(|item| {
-            ac.find_iter(item.field_to_match())
-                .fold(AHashSet::default(), |mut curr, next| {
-                    curr.insert(next.pattern());
-                    curr
-                })
-                .len()
-                == patterns_len
+            // Copy the seen
+            let mut curr_seen = seen;
+
+            for m in ac.find_iter(item.field_to_match()) {
+                let pattern_id = m.pattern().as_u64();
+
+                // Set seen bit to 0
+                // i.e if curr is 0b0000_0111 and we've just seen pattern 1
+                // 0b0000_0001 << 1 = 0b0000_0010
+                // !0b0000_0010 = 0b1111_1101
+                // curr_seen & 0b1111_1101 will always set that bit to 0
+                // and leave rest of bits untouched
+                curr_seen &= !(1 << pattern_id);
+
+                if curr_seen == 0 {
+                    return true;
+                }
+            }
+
+            false
         })
         .collect::<Vec<_>>();
 
