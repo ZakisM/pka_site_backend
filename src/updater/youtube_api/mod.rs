@@ -2,7 +2,6 @@ mod models;
 
 use std::time::Duration;
 
-use compact_str::CompactString;
 use compact_str::ToCompactString;
 use reqwest::Client;
 use reqwest::ClientBuilder;
@@ -48,7 +47,7 @@ impl YoutubeApi {
         let part = parts
             .iter()
             .map(|p| p.to_compact_string())
-            .collect::<Vec<CompactString>>()
+            .collect::<Vec<_>>()
             .join(",");
 
         let endpoint = format!(
@@ -70,8 +69,8 @@ impl YoutubeApi {
 
         let part = parts
             .iter()
-            .map(|p| p.to_string())
-            .collect::<Vec<String>>()
+            .map(|p| p.to_compact_string())
+            .collect::<Vec<_>>()
             .join(",");
 
         let endpoint = format!(
