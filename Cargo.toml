@@ -37,7 +37,10 @@ compact_str = { git = "https://github.com/ParkMyCar/compact_str", rev = "20c1520
   "diesel",
 ] }
 aho-corasick = "1.1.2"
+bitcode = "0.6.0-beta.1"
+async-compression = { version = "0.4.6", features = ["zstd", "tokio"] }
 
 [profile.release]
 lto = 'fat'
 codegen-units = 1
+strip = true

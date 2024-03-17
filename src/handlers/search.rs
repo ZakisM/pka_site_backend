@@ -4,7 +4,6 @@ use warp::Rejection;
 
 use crate::models::errors::ApiError;
 use crate::models::search::SearchQuery;
-use crate::models::success_response::SuccessResponse;
 use crate::redis_db::RedisDb;
 use crate::search::pka_search::{search_episode, search_events};
 use crate::Repo;
@@ -17,7 +16,7 @@ pub async fn search_pka_episode(
         .await
         .map_err(ApiError::from)?;
 
-    Ok(SuccessResponse::new(res))
+    Ok(res)
 }
 
 pub async fn search_pka_event(

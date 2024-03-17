@@ -3,28 +3,26 @@ use rayon::prelude::*;
 
 use crate::conduit::redis::event_cache;
 use crate::conduit::sqlite::pka_episode;
-use crate::flatbuffers::pka_event::flatbuff_from_pka_events;
-use crate::models::search::PkaEpisodeSearchResult;
+use crate::models::search::PkaEventSearchResult;
 use crate::redis_db::RedisDb;
+use crate::search::{Encodeable, Searchable};
 use crate::PKA_EVENTS_INDEX;
 use crate::{Repo, Result};
 
-pub trait Searchable {
-    fn field_to_match(&self) -> &str;
-}
-
-pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<PkaEpisodeSearchResult>> {
+pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<u8>> {
     let query = query.trim();
 
     let all_episodes = pka_episode::all_with_yt_details(state).await?;
 
-    if !query.is_empty() {
-        let results = search(query, &all_episodes);
-
-        Ok(results.into_iter().cloned().collect())
+    let results = if !query.is_empty() {
+        search(query, &all_episodes).into_iter().cloned().collect()
     } else {
-        Ok(all_episodes)
-    }
+        all_episodes
+    };
+
+    let results = results.as_bitcode_compressed().await?;
+
+    Ok(results)
 }
 
 pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
@@ -42,7 +40,12 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
             let all_events = PKA_EVENTS_INDEX.read().await;
 
             let events = search(query, &all_events);
-            let results = flatbuff_from_pka_events(events);
+            let results = events
+                .into_iter()
+                .map(PkaEventSearchResult::from)
+                .collect::<Vec<_>>();
+
+            let results = results.as_bitcode_compressed().await?;
 
             event_cache::set(redis, redis_tag, query.to_owned(), results.as_slice()).await?;
 

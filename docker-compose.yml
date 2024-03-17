@@ -12,7 +12,7 @@ services:
     restart: always
 
   react-frontend:
-    image: zakism/pka-index-frontend:latest
+    image: zakism/pka-index-frontend:master
     ports:
       - 127.0.0.1:5678:5678
     restart: always

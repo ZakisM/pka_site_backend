@@ -1,11 +1,11 @@
 use std::cmp::Ordering;
 
-use compact_str::{CompactString, ToCompactString};
+use bitcode::Encode;
+use compact_str::CompactString;
 use float_ord::FloatOrd;
 use serde::{Deserialize, Serialize};
 
-use crate::models::pka_event::PkaEvent;
-use crate::search::pka_search::Searchable;
+use crate::{models::pka_event::PkaEvent, search::Searchable};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,43 +13,27 @@ pub struct SearchQuery {
     pub query: CompactString,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Encode, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaEventSearchResult {
-    episode_number: f32,
-    timestamp: i32,
-    description: CompactString,
-    length_seconds: i32,
-    upload_date: i64,
+    pub episode_number: f32,
+    pub timestamp: i32,
+    // TODO: Use Cow<'_, str> when bitcode supports
+    pub description: String,
+    pub length_seconds: i32,
+    pub upload_date: i64,
 }
 
-impl PkaEventSearchResult {
-    #[allow(dead_code)]
-    pub fn new<S: AsRef<str>>(
-        episode_number: f32,
-        timestamp: i32,
-        description: S,
-        length_seconds: i32,
-        upload_date: i64,
-    ) -> Self {
-        PkaEventSearchResult {
-            episode_number,
-            timestamp,
-            description: description.as_ref().to_compact_string(),
-            length_seconds,
-            upload_date,
-        }
-    }
-}
+impl<T: AsRef<PkaEvent>> From<T> for PkaEventSearchResult {
+    fn from(evt: T) -> Self {
+        let evt = evt.as_ref();
 
-impl From<PkaEvent> for PkaEventSearchResult {
-    fn from(e: PkaEvent) -> Self {
         Self {
-            episode_number: e.episode_number(),
-            timestamp: e.timestamp(),
-            description: e.description().to_compact_string(),
-            length_seconds: e.length_seconds(),
-            upload_date: e.upload_date(),
+            episode_number: evt.episode_number(),
+            timestamp: evt.timestamp(),
+            description: evt.description().to_owned(),
+            length_seconds: evt.length_seconds(),
+            upload_date: evt.upload_date(),
         }
     }
 }
@@ -74,12 +58,12 @@ impl std::cmp::PartialEq for PkaEventSearchResult {
 
 impl std::cmp::Eq for PkaEventSearchResult {}
 
-#[derive(Clone, Debug, Serialize, Queryable)]
+#[derive(Clone, Encode, Debug, Serialize, Queryable)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaEpisodeSearchResult {
     episode_number: f32,
     upload_date: i64,
-    title: CompactString,
+    title: String,
     length_seconds: i32,
 }
 

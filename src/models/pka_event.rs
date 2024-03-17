@@ -7,7 +7,7 @@ use serde::Serialize;
 use crate::models::diesel_f32::DieselF32;
 use crate::models::pka_episode::PkaEpisode;
 use crate::schema::pka_event;
-use crate::search::pka_search::Searchable;
+use crate::search::Searchable;
 
 #[derive(Clone, Debug, Serialize, Insertable, Queryable, Associations, Identifiable)]
 #[serde(rename_all = "camelCase")]
@@ -21,6 +21,12 @@ pub struct PkaEvent {
     description: CompactString,
     length_seconds: i32,
     upload_date: i64,
+}
+
+impl AsRef<PkaEvent> for &PkaEvent {
+    fn as_ref(&self) -> &PkaEvent {
+        self
+    }
 }
 
 impl PkaEvent {
