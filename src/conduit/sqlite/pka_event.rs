@@ -37,9 +37,8 @@ pub async fn random_amount(repo: &Repo, amount: usize) -> Result<Vec<PkaEventSea
 
         let res = all_events
             .choose_multiple(&mut rng, amount)
-            .cloned()
             .map(PkaEventSearchResult::from)
-            .collect::<Vec<PkaEventSearchResult>>();
+            .collect::<Vec<_>>();
 
         Ok(res)
     })
