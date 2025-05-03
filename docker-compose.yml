@@ -4,7 +4,7 @@ services:
     depends_on:
       - redis
     volumes:
-      - ./pka_index_data:/app/data
+      - ./pka_index_data:/app/pka_index_data
     environment:
       - YT_API_KEY=$YT_API_KEY
     ports:

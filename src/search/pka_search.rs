@@ -10,15 +10,12 @@ use crate::PKA_EVENTS_INDEX;
 use crate::{Repo, Result};
 
 pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<u8>> {
-    let query = query.trim();
-
     let all_episodes = pka_episode::all_with_yt_details(state).await?;
 
-    let results = if !query.is_empty() {
-        search(query, &all_episodes).into_iter().cloned().collect()
-    } else {
-        all_episodes
-    };
+    let results = search(query, &all_episodes)
+        .into_iter()
+        .cloned()
+        .collect::<Vec<_>>();
 
     let results = results.as_bitcode_compressed().await?;
 
@@ -26,12 +23,6 @@ pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<u8>> {
 }
 
 pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
-    let query = query.trim();
-
-    if query.is_empty() {
-        return Ok(Vec::new());
-    }
-
     let redis_tag = "EVENTS";
 
     match event_cache::get(redis, redis_tag, query.to_owned()).await {
@@ -58,6 +49,16 @@ fn search<'a, T>(query: &str, items: &'a [T]) -> Vec<&'a T>
 where
     T: Searchable + Ord + Send + Sync,
 {
+    let query = query.trim();
+
+    if query.is_empty() {
+        let mut res = items.iter().collect::<Vec<_>>();
+
+        res.sort();
+
+        return res;
+    }
+
     let patterns = query.split_ascii_whitespace();
 
     // Set all the bits to 1 for pattern_id,

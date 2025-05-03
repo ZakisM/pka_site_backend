@@ -80,7 +80,7 @@ impl RedisDb {
 
             let key = format!("{}-{}", redis_tag, key);
 
-            conn.set_ex(key, value, 30).await?;
+            conn.set_ex::<_, _, ()>(key, value, 30).await?;
 
             Ok(())
         })

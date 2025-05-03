@@ -23,7 +23,7 @@ pub async fn insert(repo: &Repo, event: PkaEvent) -> Result<(), Error> {
     .await
 }
 
-pub async fn random_amount(repo: &Repo, amount: usize) -> Result<Vec<PkaEventSearchResult>, Error> {
+pub async fn random_amount(repo: &Repo) -> Result<Option<PkaEventSearchResult>, Error> {
     repo.run(move |conn| {
         let mut all_events = pka_event.load::<PkaEvent>(conn)?;
 
@@ -35,10 +35,7 @@ pub async fn random_amount(repo: &Repo, amount: usize) -> Result<Vec<PkaEventSea
 
         let mut rng = thread_rng();
 
-        let res = all_events
-            .choose_multiple(&mut rng, amount)
-            .map(PkaEventSearchResult::from)
-            .collect::<Vec<_>>();
+        let res = all_events.choose(&mut rng).map(PkaEventSearchResult::from);
 
         Ok(res)
     })
