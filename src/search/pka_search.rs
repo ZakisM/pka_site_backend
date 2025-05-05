@@ -71,6 +71,7 @@ where
     let seen = (1_u64 << patterns.clone().count()) - 1;
 
     let ac = AhoCorasickBuilder::new()
+        .match_kind(aho_corasick::MatchKind::LeftmostFirst)
         .ascii_case_insensitive(true)
         .build(patterns)
         .expect("Failed to build aho_corasick");
