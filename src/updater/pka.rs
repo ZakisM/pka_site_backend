@@ -13,7 +13,7 @@ use crate::{Repo, Result};
 const WOODY_YOUTUBE_UPLOAD_PLAYLIST_ID: &str = "UUIPVJoHb_A5S3kcv3TJlyEg";
 
 pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
-    info!("Checking playlist for missing episodes.");
+    tracing::info!("Checking playlist for missing episodes.");
 
     // Extract data from youtube_link
     let yt_api = YoutubeApi::new()?;
@@ -36,7 +36,7 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
     for upload in uploads.items.into_iter() {
         let required_episode = format!("PKA {}", required_episode_number).to_compact_string();
 
-        info!("Looking for {}.", required_episode);
+        tracing::info!("Looking for {}.", required_episode);
 
         if upload
             .snippet
@@ -44,7 +44,7 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
             .to_lowercase()
             .contains(required_episode.to_lowercase().as_str())
         {
-            info!(
+            tracing::info!(
                 "Found {} in playlist. Attempting to extract video details.",
                 required_episode
             );
@@ -75,24 +75,24 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
             );
 
             if let Err(e) = pka_episode::insert(state, pka_ep).await {
-                error!("Error adding latest pka_ep: {}", e);
+                tracing::error!("Error adding latest pka_ep: {}", e);
             }
 
             for evt in events.into_iter() {
                 if let Err(e) = pka_event::insert(state, evt).await {
-                    error!("Error adding latest events: {}", e);
+                    tracing::error!("Error adding latest events: {}", e);
                 }
             }
 
             if let Err(e) = pka_youtube_details::insert(state, youtube_details).await {
-                error!("Error adding latest youtube_details: {}", e);
+                tracing::error!("Error adding latest youtube_details: {}", e);
             }
 
-            info!("Extracted video details.");
+            tracing::info!("Extracted video details.");
 
             required_episode_number += 1.0;
         } else {
-            warn!("Could not find episode.");
+            tracing::warn!("Could not find episode.");
         }
     }
 

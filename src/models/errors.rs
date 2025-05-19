@@ -60,7 +60,7 @@ impl From<diesel::result::Error> for ApiError {
     fn from(de_err: diesel::result::Error) -> Self {
         let err_string = de_err.to_string();
 
-        error!("{}", err_string);
+        tracing::error!("{}", err_string);
 
         match err_string.as_str() {
             "Record not found" | "NotFound" => {
@@ -86,7 +86,7 @@ macro_rules! convert_error {
             fn from(err: $err_type) -> Self {
                 let err_str = err.to_string();
 
-                error!("{}", &err_str);
+                tracing::error!("{}", &err_str);
 
                 ApiError::new(err_str, StatusCode::INTERNAL_SERVER_ERROR)
             }
@@ -98,7 +98,7 @@ macro_rules! convert_error {
             fn from(err: $err_type) -> Self {
                 let err_str = err.to_string();
 
-                error!("{}", &err_str);
+                tracing::error!("{}", &err_str);
 
                 ApiError::new($custom_message, StatusCode::INTERNAL_SERVER_ERROR)
             }

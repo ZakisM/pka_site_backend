@@ -8,12 +8,12 @@ use crate::Repo;
 
 pub async fn latest_episode(state: Arc<Repo>) {
     loop {
-        info!("Checking for latest episode...");
+        tracing::info!("Checking for latest episode...");
 
         if let Err(e) = get_latest_pka_episode_data(&state).await {
-            error!("get_latest_worker error: {}", e);
+            tracing::error!("get_latest_worker error: {}", e);
         } else {
-            info!("Successfully finished looking for latest episodes.");
+            tracing::info!("Successfully finished looking for latest episodes.");
         }
 
         //Check once every five minutes.

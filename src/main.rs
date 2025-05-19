@@ -4,8 +4,6 @@ extern crate diesel;
 extern crate diesel_derive_newtype;
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate log;
 
 use std::env;
 use std::sync::Arc;
@@ -61,7 +59,10 @@ async fn main() {
 
     env::set_var("RUST_LOG", "INFO");
 
-    pretty_env_logger::init_timed();
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_timer(tracing_subscriber::fmt::time::ChronoUtc::rfc3339())
+        .init();
 
     // DB and Redis
     let redis_client: Arc<RedisDb> = Arc::new(

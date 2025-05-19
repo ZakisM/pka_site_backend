@@ -97,10 +97,10 @@
 //                 );
 //
 //                 if let Err(e) = pka_youtube_details::insert(state, youtube_details).await {
-//                     error!("{}", e);
+//                     tracing::error!("{}", e);
 //                 };
 //             }
-//             Err(e) => error!(
+//             Err(e) => tracing::error!(
 //                 "Error downloading video details for: {} - {}",
 //                 ep.number(),
 //                 e
@@ -141,11 +141,11 @@
 //                     Ok(events) => {
 //                         for event in events.into_iter() {
 //                             if let Err(e) = pka_event::insert(state, event).await {
-//                                 error!("{}", e);
+//                                 tracing::error!("{}", e);
 //                             }
 //                         }
 //                     }
-//                     Err(e) => error!("{}", e),
+//                     Err(e) => tracing::error!("{}", e),
 //                 }
 //             }
 //         }
@@ -308,7 +308,7 @@
 //         let pka_ep = PkaEpisode::new(ep.number, ep.identifier, ep.you_tube, upload_date);
 //
 //         if let Err(e) = pka_episode::insert(state, pka_ep).await {
-//             error!("Failed to add [{}] - {}", ep.number, e.to_string());
+//             tracing::error!("Failed to add [{}] - {}", ep.number, e.to_string());
 //         }
 //     }
 // }
