@@ -53,14 +53,12 @@ static GLOBAL: MiMalloc = MiMalloc;
 async fn main() {
     dotenv().ok();
 
-    env::set_var("RUST_LOG", "TRACE");
+    env::set_var("RUST_LOG", "INFO");
 
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .with_timer(tracing_subscriber::fmt::time::ChronoUtc::rfc3339())
         .init();
-
-    tracing::trace!("This is a TRACE message for testing RUST_LOG");
 
     // DB and Redis
     let redis_client: Arc<RedisDb> = Arc::new(
