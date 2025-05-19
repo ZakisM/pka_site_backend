@@ -28,7 +28,7 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
     match event_cache::get(redis, redis_tag, query.to_owned()).await {
         Ok(results) => Ok(results),
         Err(_) => {
-            let all_events = PKA_EVENTS_INDEX.read().await;
+            let all_events = PKA_EVENTS_INDEX.get().unwrap().read().await;
 
             let events = search(query, &all_events);
             let results = events

@@ -2,11 +2,9 @@
 extern crate diesel;
 #[macro_use]
 extern crate diesel_derive_newtype;
-#[macro_use]
-extern crate lazy_static;
 
 use std::env;
-use std::sync::Arc;
+use std::sync::{Arc, OnceCell};
 
 use diesel::SqliteConnection;
 use dotenv::dotenv;
@@ -45,10 +43,8 @@ type StateFilter = BoxedFilter<(Arc<Repo>,)>;
 type RedisFilter = BoxedFilter<(Arc<RedisDb>,)>;
 type EventIndexType = Arc<RwLock<Box<[PkaEvent]>>>;
 
-lazy_static! {
-    static ref YT_API_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));
-    static ref PKA_EVENTS_INDEX: EventIndexType = Arc::new(RwLock::new(Box::default()));
-}
+pub static YT_API_KEY: OnceCell<Arc<RwLock<String>>> = OnceCell::new();
+pub static PKA_EVENTS_INDEX: OnceCell<EventIndexType> = OnceCell::new();
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -57,12 +53,14 @@ static GLOBAL: MiMalloc = MiMalloc;
 async fn main() {
     dotenv().ok();
 
-    env::set_var("RUST_LOG", "INFO");
+    env::set_var("RUST_LOG", "TRACE");
 
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .with_timer(tracing_subscriber::fmt::time::ChronoUtc::rfc3339())
         .init();
+
+    tracing::trace!("This is a TRACE message for testing RUST_LOG");
 
     // DB and Redis
     let redis_client: Arc<RedisDb> = Arc::new(
@@ -76,13 +74,13 @@ async fn main() {
     ));
 
     {
-        *YT_API_KEY.write().await = env::var("YT_API_KEY").expect("'YT_API_KEY' is not set.");
+        let api_key_val = env::var("YT_API_KEY").expect("'YT_API_KEY' is not set.");
+        YT_API_KEY.set(Arc::new(RwLock::new(api_key_val))).expect("Failed to set YT_API_KEY global");
 
-        let all_events = pka_event::all(&state)
+        let all_events_val = pka_event::all(&state)
             .await
             .expect("Failed to add all PKA events");
-
-        *PKA_EVENTS_INDEX.write().await = all_events.into_boxed_slice();
+        PKA_EVENTS_INDEX.set(Arc::new(RwLock::new(all_events_val.into_boxed_slice()))).expect("Failed to set PKA_EVENTS_INDEX global");
     }
 
     // workers
