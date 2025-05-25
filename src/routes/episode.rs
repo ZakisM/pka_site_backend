@@ -1,6 +1,7 @@
 use warp::filters::BoxedFilter;
 use warp::Filter;
 
+use crate::models::search::SearchQuery;
 use crate::routes::api_path_prefix as main_prefix;
 use crate::{handlers, StateFilter};
 
@@ -61,4 +62,19 @@ pub fn episode_routes(
         .or(latest_pka_episode_r(state_c()))
         .or(random_pka_episode_r(state_c()))
         .or(find_pka_episode_youtube_link_r(state_c()))
+        .or(search_pka_episode_r(state_c()))
+}
+
+// Copied from src/routes/search.rs and modified
+fn search_pka_episode_r(
+    state: StateFilter,
+) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
+    path_prefix() // Uses the episode.rs path_prefix
+        .and(warp::path("search")) // New path segment
+        .and(warp::post())
+        .and(warp::body::content_length_limit(64))
+        .and(warp::body::json::<SearchQuery>())
+        .and(state)
+        .and_then(crate::handlers::episode::search_pka_episode) // Updated handler
+        .boxed()
 }

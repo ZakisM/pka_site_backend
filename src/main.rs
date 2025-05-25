@@ -21,7 +21,7 @@ use crate::models::pka_event::PkaEvent;
 use crate::redis_db::RedisDb;
 use crate::routes::episode::episode_routes;
 use crate::routes::events::event_routes;
-use crate::routes::search::search_routes;
+// use crate::routes::search::search_routes; // search_routes is no longer used directly here
 use crate::routes::static_files::static_files_routes;
 use crate::workers::events::update_events;
 use crate::workers::new_episode::latest_episode;
@@ -98,9 +98,8 @@ async fn main() {
         .allow_headers(vec!["authorization", "content-type"])
         .allow_credentials(true);
 
-    let api = search_routes(state_c(), redis_c())
-        .or(episode_routes(state_c()))
-        .or(event_routes(state_c()))
+    let api = episode_routes(state_c())
+        .or(event_routes(state_c(), redis_c())) // Pass redis_c() here
         .or(static_files_routes(state_c()))
         .with(cors)
         .recover(handle_rejection);

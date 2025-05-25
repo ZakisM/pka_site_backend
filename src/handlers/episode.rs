@@ -6,8 +6,12 @@ use warp::Rejection;
 use crate::conduit::sqlite::pka_episode;
 use crate::conduit::sqlite::pka_episode::find_youtube_link;
 use crate::models::errors::ApiError;
+use crate::models::search::SearchQuery;
 use crate::models::success_response::SuccessResponse;
+use crate::search::pka_search::search_episode;
 use crate::Repo;
+use std::sync::Arc;
+use warp::Rejection;
 
 pub async fn watch_pka_episode(
     number: f32,
@@ -18,6 +22,15 @@ pub async fn watch_pka_episode(
         .map_err(ApiError::from)?;
 
     Ok(SuccessResponse::new(res))
+}
+
+pub async fn search_pka_episode(
+    sq: SearchQuery,
+    state: Arc<Repo>,
+) -> Result<impl warp::Reply, Rejection> {
+    let res = search_episode(&state, &sq.query).await?;
+
+    Ok(res)
 }
 
 pub async fn find_pka_episode_youtube_link(
