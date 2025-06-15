@@ -16,6 +16,7 @@ serde_json = "1"
 rand = "0.9"
 lazy_static = "1.4"
 diesel = { version = "2", features = ["r2d2", "sqlite", "chrono", "extras"] }
+libsqlite3-sys = { version = "*", features = ["bundled"] }
 chrono = { version = "0.4", features = ["serde"] }
 float-ord = "0.3"
 reqwest = { version = "0.12", features = ["gzip"] }
