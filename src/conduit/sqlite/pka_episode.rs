@@ -1,7 +1,7 @@
 use compact_str::CompactString;
 use diesel::prelude::*;
 use diesel::result::Error;
-use rand::seq::SliceRandom;
+use rand::prelude::IndexedRandom;
 
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
@@ -48,7 +48,7 @@ pub async fn random(repo: &Repo) -> Result<f32, Error> {
             .load::<f32>(conn)?;
 
         Ok(*all_episode_numbers
-            .choose(&mut rand::thread_rng())
+            .choose(&mut rand::rng())
             .unwrap_or(&0.0))
     })
     .await

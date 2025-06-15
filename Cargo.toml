@@ -8,30 +8,29 @@ edition = "2021"
 
 [dependencies]
 warp = { version = "0.3" }
-pretty_env_logger = "0.4"
+pretty_env_logger = "0.5"
 tokio = { version = "1", features = ["full"] }
 log = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-rand = "0.8"
+rand = "0.9"
 lazy_static = "1.4"
 diesel = { version = "2", features = ["r2d2", "sqlite", "chrono", "extras"] }
 chrono = { version = "0.4", features = ["serde"] }
 float-ord = "0.3"
-reqwest = { version = "0.11", features = ["gzip"] }
+reqwest = { version = "0.12", features = ["gzip"] }
 regex = "1"
-quick-xml = { version = "0.28.1", features = ["serialize"] }
+quick-xml = { version = "0.37.5", features = ["serialize"] }
 diesel-derive-newtype = "2.0.0-rc.0"
 iso8601-duration = { version = "0.2.0", features = ["chrono"] }
-libsqlite3-sys = { version = "*", features = ["bundled"] }
-redis = "0.22.1"
-bb8-redis = "0.12.0"
+redis = "0.32.0"
+bb8-redis = "0.23.0"
 rayon = "1.5"
 dotenv = "0.15.0"
-strum = "0.24.1"
-strum_macros = "0.24.3"
+strum = "0.27.1"
+strum_macros = "0.27.1"
 mimalloc = "0.1.39"
-compact_str = { git = "https://github.com/ParkMyCar/compact_str", rev = "20c15209fab00150b929b53f42326ca96e543f01", features = [
+compact_str = { version = "0.8", features = [
   "serde",
   "diesel",
 ] }
