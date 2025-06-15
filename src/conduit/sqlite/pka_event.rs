@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 use diesel::result::Error;
-use rand::seq::SliceRandom;
-use rand::thread_rng;
+use rand::prelude::IndexedRandom;
+use rand::rng;
 
 use crate::models::pka_event::PkaEvent;
 use crate::models::search::PkaEventSearchResult;
@@ -33,7 +33,7 @@ pub async fn random_amount(repo: &Repo) -> Result<Option<PkaEventSearchResult>, 
             !des.contains("outro") && !des.contains("intro") && !des.contains("ad read")
         });
 
-        let mut rng = thread_rng();
+        let mut rng = rng();
 
         let res = all_events.choose(&mut rng).map(PkaEventSearchResult::from);
 
