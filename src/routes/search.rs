@@ -5,15 +5,16 @@ use crate::models::search::SearchQuery;
 use crate::routes::api_path_prefix as main_prefix;
 use crate::{handlers, RedisFilter, StateFilter};
 
-fn path_prefix() -> BoxedFilter<()> {
-    main_prefix().and(warp::path!("search" / ..)).boxed()
+fn search_root() -> BoxedFilter<()> {
+    main_prefix().and(warp::path("search")).boxed()
 }
 
 fn search_pka_episode_r(
     state: StateFilter,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-    path_prefix()
-        .and(warp::path("search_pka_episode"))
+    search_root()
+        .and(warp::path("episodes"))
+        .and(warp::path::end())
         .and(warp::post())
         .and(warp::body::content_length_limit(64))
         .and(warp::body::json::<SearchQuery>())
@@ -25,8 +26,9 @@ fn search_pka_episode_r(
 fn search_pka_event_r(
     redis: RedisFilter,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-    path_prefix()
-        .and(warp::path("search_pka_event"))
+    search_root()
+        .and(warp::path("events"))
+        .and(warp::path::end())
         .and(warp::post())
         .and(warp::body::content_length_limit(64))
         .and(warp::body::json::<SearchQuery>())

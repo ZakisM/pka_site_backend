@@ -4,15 +4,16 @@ use warp::Filter;
 use crate::routes::api_path_prefix as main_prefix;
 use crate::{handlers, StateFilter};
 
-fn path_prefix() -> BoxedFilter<()> {
-    main_prefix().and(warp::path!("events" / ..)).boxed()
+fn events_root() -> BoxedFilter<()> {
+    main_prefix().and(warp::path("events")).boxed()
 }
 
 fn random_pka_event_r(
     state: StateFilter,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-    path_prefix()
+    events_root()
         .and(warp::path("random"))
+        .and(warp::path::end())
         .and(warp::get())
         .and(state)
         .and_then(handlers::event::random_pka_event)

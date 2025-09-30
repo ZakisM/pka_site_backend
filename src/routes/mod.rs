@@ -7,5 +7,5 @@ pub mod search;
 pub mod static_files;
 
 fn api_path_prefix() -> BoxedFilter<()> {
-    warp::path!("v1" / "api" / ..).boxed()
+    warp::path!("api" / "v1" / ..).boxed()
 }

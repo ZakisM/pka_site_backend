@@ -47,9 +47,7 @@ pub async fn random(repo: &Repo) -> Result<f32, Error> {
             .order_by(number.desc())
             .load::<f32>(conn)?;
 
-        Ok(*all_episode_numbers
-            .choose(&mut rand::rng())
-            .unwrap_or(&0.0))
+        Ok(*all_episode_numbers.choose(&mut rand::rng()).unwrap_or(&0.0))
     })
     .await
 }
