@@ -1,4 +1,3 @@
-pub mod diesel_f32;
 pub mod errors;
 pub mod pka_episode;
 pub mod pka_episode_with_all;

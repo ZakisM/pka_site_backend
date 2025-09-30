@@ -1,8 +1,4 @@
 #[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate diesel_derive_newtype;
-#[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
@@ -10,15 +6,14 @@ extern crate log;
 use std::env;
 use std::sync::Arc;
 
-use diesel::SqliteConnection;
 use dotenv::dotenv;
 use mimalloc::MiMalloc;
+use sqlx::SqlitePool;
 use tokio::sync::RwLock;
 use warp::filters::BoxedFilter;
 use warp::Filter;
 
 use crate::conduit::sqlite::pka_event;
-use crate::db::SqDatabase;
 use crate::handlers::errors::handle_rejection;
 use crate::models::errors::ApiError;
 use crate::models::pka_event::PkaEvent;
@@ -36,13 +31,12 @@ mod handlers;
 mod models;
 mod redis_db;
 mod routes;
-mod schema;
 mod search;
 mod updater;
 mod workers;
 
 type Result<T> = std::result::Result<T, ApiError>;
-type Repo = db::SqDatabase<SqliteConnection>;
+type Repo = SqlitePool;
 type StateFilter = BoxedFilter<(Arc<Repo>,)>;
 type RedisFilter = BoxedFilter<(Arc<RedisDb>,)>;
 type EventIndexType = Arc<RwLock<Box<[PkaEvent]>>>;
@@ -70,9 +64,11 @@ async fn main() {
             .expect("Failed to connect to redis."),
     );
 
-    let state: Arc<Repo> = Arc::new(SqDatabase::new(
-        &env::var("DATABASE_URL").expect("'DATABASE_URL' is not set"),
-    ));
+    let state: Arc<Repo> = Arc::new(
+        db::create_pool(&env::var("DATABASE_URL").expect("'DATABASE_URL' is not set"))
+            .await
+            .expect("Failed to create SQLite pool"),
+    );
 
     {
         *YT_API_KEY.write().await = env::var("YT_API_KEY").expect("'YT_API_KEY' is not set.");

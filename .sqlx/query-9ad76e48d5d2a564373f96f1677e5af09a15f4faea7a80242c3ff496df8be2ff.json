@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n            e.number         AS \"episode_number: f32\",\n            e.upload_date    AS \"upload_date: i64\",\n            y.title          AS \"title: String\",\n            y.length_seconds AS \"length_seconds: i32\"\n          FROM pka_episode e\n          INNER JOIN pka_youtube_details y ON y.episode_number = e.number\n          ORDER BY e.number DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "episode_number: f32",
+        "ordinal": 0,
+        "type_info": "Float"
+      },
+      {
+        "name": "upload_date: i64",
+        "ordinal": 1,
+        "type_info": "Int64"
+      },
+      {
+        "name": "title: String",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "length_seconds: i32",
+        "ordinal": 3,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "9ad76e48d5d2a564373f96f1677e5af09a15f4faea7a80242c3ff496df8be2ff"
+}

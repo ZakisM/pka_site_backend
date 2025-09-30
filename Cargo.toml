@@ -15,14 +15,12 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rand = "0.9"
 lazy_static = "1.4"
-diesel = { version = "2", features = ["r2d2", "sqlite", "chrono", "extras"] }
-libsqlite3-sys = { version = "*", features = ["bundled"] }
+sqlx = { version = "0.7", features = ["runtime-tokio", "macros", "sqlite"] }
 chrono = { version = "0.4", features = ["serde"] }
 float-ord = "0.3"
 reqwest = { version = "0.12", features = ["gzip"] }
 regex = "1"
 quick-xml = { version = "0.37.5", features = ["serialize"] }
-diesel-derive-newtype = "2.0.0-rc.0"
 iso8601-duration = { version = "0.2.0", features = ["chrono"] }
 redis = "0.32.0"
 bb8-redis = "0.23.0"
@@ -31,10 +29,7 @@ dotenv = "0.15.0"
 strum = "0.27.1"
 strum_macros = "0.27.1"
 mimalloc = "0.1.39"
-compact_str = { version = "0.8", features = [
-  "serde",
-  "diesel",
-] }
+compact_str = { version = "0.8", features = ["serde", "sqlx-sqlite"] }
 aho-corasick = "1.1.2"
 bitcode = "0.6.0-beta.1"
 async-compression = { version = "0.4.6", features = ["zstd", "tokio"] }

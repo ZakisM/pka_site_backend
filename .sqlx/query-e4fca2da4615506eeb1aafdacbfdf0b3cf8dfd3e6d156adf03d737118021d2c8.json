@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT youtube_link AS \"youtube_link: CompactString\" FROM pka_episode WHERE number = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "youtube_link: CompactString",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e4fca2da4615506eeb1aafdacbfdf0b3cf8dfd3e6d156adf03d737118021d2c8"
+}

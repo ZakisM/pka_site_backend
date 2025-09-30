@@ -4,6 +4,7 @@ use bitcode::Encode;
 use compact_str::CompactString;
 use float_ord::FloatOrd;
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
 
 use crate::{models::pka_event::PkaEvent, search::Searchable};
 
@@ -58,13 +59,13 @@ impl std::cmp::PartialEq for PkaEventSearchResult {
 
 impl std::cmp::Eq for PkaEventSearchResult {}
 
-#[derive(Clone, Encode, Debug, Serialize, Queryable)]
+#[derive(Clone, Encode, Debug, Serialize, FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaEpisodeSearchResult {
-    episode_number: f32,
-    upload_date: i64,
-    title: String,
-    length_seconds: i32,
+    pub episode_number: f32,
+    pub upload_date: i64,
+    pub title: String,
+    pub length_seconds: i32,
 }
 
 impl Searchable for PkaEpisodeSearchResult {

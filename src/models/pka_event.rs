@@ -4,23 +4,21 @@ use compact_str::CompactString;
 use float_ord::FloatOrd;
 use serde::Serialize;
 
-use crate::models::diesel_f32::DieselF32;
-use crate::models::pka_episode::PkaEpisode;
-use crate::schema::pka_event;
 use crate::search::Searchable;
 
-#[derive(Clone, Debug, Serialize, Insertable, Queryable, Associations, Identifiable)]
+use sqlx::FromRow;
+
+#[derive(Clone, Debug, Serialize, FromRow)]
 #[serde(rename_all = "camelCase")]
-#[diesel(primary_key(event_id), belongs_to(PkaEpisode, foreign_key = episode_number), table_name = pka_event)]
 pub struct PkaEvent {
     #[serde(skip_serializing)]
-    event_id: CompactString,
+    pub event_id: CompactString,
     #[serde(skip_serializing)]
-    episode_number: DieselF32,
-    timestamp: i32,
-    description: CompactString,
-    length_seconds: i32,
-    upload_date: i64,
+    pub episode_number: f32,
+    pub timestamp: i32,
+    pub description: CompactString,
+    pub length_seconds: i32,
+    pub upload_date: i64,
 }
 
 impl AsRef<PkaEvent> for &PkaEvent {
@@ -40,7 +38,7 @@ impl PkaEvent {
     ) -> Self {
         PkaEvent {
             event_id,
-            episode_number: DieselF32(episode_number),
+            episode_number,
             timestamp,
             description,
             length_seconds,
@@ -49,7 +47,7 @@ impl PkaEvent {
     }
 
     pub fn episode_number(&self) -> f32 {
-        self.episode_number.0
+        self.episode_number
     }
 
     pub fn event_id(&self) -> CompactString {

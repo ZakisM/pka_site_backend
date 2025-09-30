@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n            video_id       AS \"video_id: CompactString\",\n            episode_number AS \"episode_number: f32\",\n            title          AS \"title: CompactString\",\n            length_seconds AS \"length_seconds: i32\"\n          FROM pka_youtube_details\n          WHERE episode_number = ?\n          LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "video_id: CompactString",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "episode_number: f32",
+        "ordinal": 1,
+        "type_info": "Float"
+      },
+      {
+        "name": "title: CompactString",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "length_seconds: i32",
+        "ordinal": 3,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5e7f92e078c20816c830624e39a19d495964c8c88b3dfb7f2be31e10f038259f"
+}

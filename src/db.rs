@@ -1,44 +1,19 @@
-use diesel::r2d2::{ConnectionManager, Pool, PooledConnection, R2D2Connection};
-use diesel::{r2d2, Connection};
+use std::str::FromStr;
+use std::time::Duration;
 
-pub struct SqDatabase<T>
-where
-    T: Connection + 'static + R2D2Connection,
-{
-    connection_pool: Pool<ConnectionManager<T>>,
-}
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions};
+use sqlx::SqlitePool;
 
-impl<T> SqDatabase<T>
-where
-    T: Connection + 'static + R2D2Connection,
-{
-    pub fn new(database_url: &str) -> Self {
-        let manager = ConnectionManager::new(database_url);
-        let pool = r2d2::Builder::new()
-            .max_size(15)
-            .build(manager)
-            .expect("Failed to build connection pool for database.");
+pub async fn create_pool(database_url: &str) -> sqlx::Result<SqlitePool> {
+    let connect_options = SqliteConnectOptions::from_str(database_url)?
+        .create_if_missing(true)
+        .journal_mode(SqliteJournalMode::Wal)
+        .busy_timeout(Duration::from_secs(30));
 
-        SqDatabase {
-            connection_pool: pool,
-        }
-    }
-
-    pub async fn run<F, R>(&self, f: F) -> R
-    where
-        F: 'static
-            + FnOnce(&mut PooledConnection<ConnectionManager<T>>) -> R
-            + Send
-            + std::marker::Unpin,
-        T: Send,
-        R: 'static + Send,
-    {
-        let pool = self.connection_pool.clone();
-        tokio::task::spawn_blocking(move || {
-            let mut connection = pool.get().expect("Failed to get connection from pool");
-            (f)(&mut connection)
-        })
+    SqlitePoolOptions::new()
+        .max_connections(15)
+        .min_connections(1)
+        .idle_timeout(Duration::from_secs(60))
+        .connect_with(connect_options)
         .await
-        .expect("Failed to run diesel query on threadpool")
-    }
 }

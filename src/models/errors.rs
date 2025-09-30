@@ -56,17 +56,15 @@ impl warp::Reply for ApiError {
     }
 }
 
-impl From<diesel::result::Error> for ApiError {
-    fn from(de_err: diesel::result::Error) -> Self {
-        let err_string = de_err.to_string();
+impl From<sqlx::Error> for ApiError {
+    fn from(err: sqlx::Error) -> Self {
+        error!("{}", err);
 
-        error!("{}", err_string);
-
-        match err_string.as_str() {
-            "Record not found" | "NotFound" => {
+        match err {
+            sqlx::Error::RowNotFound => {
                 ApiError::new("Data could not be found.", StatusCode::NOT_FOUND)
             }
-            _ => ApiError::new(err_string, StatusCode::INTERNAL_SERVER_ERROR),
+            _ => ApiError::new(err.to_string(), StatusCode::INTERNAL_SERVER_ERROR),
         }
     }
 }

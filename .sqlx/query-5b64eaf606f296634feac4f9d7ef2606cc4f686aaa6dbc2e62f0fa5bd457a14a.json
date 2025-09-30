@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n            number        AS \"number: f32\",\n            name          AS \"name: CompactString\",\n            youtube_link  AS \"youtube_link: CompactString\",\n            upload_date   AS \"upload_date: i64\"\n          FROM pka_episode",
+  "describe": {
+    "columns": [
+      {
+        "name": "number: f32",
+        "ordinal": 0,
+        "type_info": "Float"
+      },
+      {
+        "name": "name: CompactString",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "youtube_link: CompactString",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "upload_date: i64",
+        "ordinal": 3,
+        "type_info": "Int64"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "5b64eaf606f296634feac4f9d7ef2606cc4f686aaa6dbc2e62f0fa5bd457a14a"
+}
