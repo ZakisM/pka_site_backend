@@ -1,20 +1,18 @@
 use axum::body::Body;
-use axum::extract::{rejection::JsonRejection, Json, State};
+use axum::extract::State;
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
 
 use crate::app_state::AppState;
+use crate::extractors::AppJson;
 use crate::models::errors::ApiError;
 use crate::models::search::SearchQuery;
 use crate::search::pka_search::{search_episode, search_events};
 
 pub async fn search_pka_episode(
     State(state): State<AppState>,
-    payload: Result<Json<SearchQuery>, JsonRejection>,
+    AppJson(payload): AppJson<SearchQuery>,
 ) -> Result<Response, ApiError> {
-    let Json(payload) = payload
-        .map_err(|rejection| ApiError::new(rejection.body_text(), StatusCode::BAD_REQUEST))?;
-
     let res = search_episode(state.db.as_ref(), &payload.query).await?;
 
     Ok(binary_response(res))
@@ -22,11 +20,8 @@ pub async fn search_pka_episode(
 
 pub async fn search_pka_event(
     State(state): State<AppState>,
-    payload: Result<Json<SearchQuery>, JsonRejection>,
+    AppJson(payload): AppJson<SearchQuery>,
 ) -> Result<Response, ApiError> {
-    let Json(payload) = payload
-        .map_err(|rejection| ApiError::new(rejection.body_text(), StatusCode::BAD_REQUEST))?;
-
     let res = search_events(state.redis.as_ref(), &payload.query).await?;
 
     Ok(binary_response(res))

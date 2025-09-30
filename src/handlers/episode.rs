@@ -1,4 +1,4 @@
-use axum::extract::{Path, State};
+use axum::extract::State;
 use axum::http::StatusCode;
 
 use compact_str::CompactString;
@@ -6,12 +6,13 @@ use compact_str::CompactString;
 use crate::app_state::AppState;
 use crate::conduit::sqlite::pka_episode;
 use crate::conduit::sqlite::pka_episode::find_youtube_link;
+use crate::extractors::AppPath;
 use crate::models::errors::ApiError;
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
 use crate::models::success_response::SuccessResponse;
 
 pub async fn watch_pka_episode(
-    Path(number): Path<f32>,
+    AppPath(number): AppPath<f32>,
     State(state): State<AppState>,
 ) -> Result<SuccessResponse<PkaEpisodeWithAll>, ApiError> {
     let res = pka_episode::find_with_all(state.db.as_ref(), number)
@@ -22,7 +23,7 @@ pub async fn watch_pka_episode(
 }
 
 pub async fn find_pka_episode_youtube_link(
-    Path(number): Path<f32>,
+    AppPath(number): AppPath<f32>,
     State(state): State<AppState>,
 ) -> Result<SuccessResponse<CompactString>, ApiError> {
     let res = find_youtube_link(state.db.as_ref(), number)

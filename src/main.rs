@@ -26,6 +26,7 @@ use crate::workers::new_episode::latest_episode;
 mod app_state;
 mod conduit;
 mod db;
+mod extractors;
 mod handlers;
 mod models;
 mod redis_db;

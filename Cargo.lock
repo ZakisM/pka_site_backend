@@ -1574,6 +1574,7 @@ dependencies = [
  "sqlx",
  "strum",
  "strum_macros",
+ "thiserror",
  "tokio",
  "tower-http",
 ]
