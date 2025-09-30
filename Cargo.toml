@@ -7,7 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-warp = { version = "0.3" }
+axum = { version = "0.8", features = ["macros", "json"] }
 pretty_env_logger = "0.5"
 tokio = { version = "1", features = ["full"] }
 log = "0.4"
@@ -33,6 +33,7 @@ compact_str = { version = "0.8", features = ["serde", "sqlx-sqlite"] }
 aho-corasick = "1.1.2"
 bitcode = "0.6.0-beta.1"
 async-compression = { version = "0.4.6", features = ["zstd", "tokio"] }
+tower-http = { version = "0.6", features = ["cors"] }
 
 [profile.release]
 lto = 'fat'

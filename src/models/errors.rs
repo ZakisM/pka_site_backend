@@ -2,8 +2,10 @@ use std::fmt;
 
 use serde::ser::{SerializeStruct, Serializer};
 use serde::Serialize;
-use warp::http::StatusCode;
-use warp::reply::Response;
+
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::Json;
 
 use crate::convert_error;
 
@@ -47,12 +49,9 @@ impl ApiError {
     }
 }
 
-impl warp::reject::Reject for ApiError {}
-
-impl warp::Reply for ApiError {
+impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let json = warp::reply::json(&self);
-        warp::reply::with_status(json, self.code).into_response()
+        (self.code, Json(self)).into_response()
     }
 }
 

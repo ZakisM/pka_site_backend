@@ -1,21 +1,29 @@
-use std::sync::Arc;
-
 use float_ord::FloatOrd;
-use warp::Rejection;
 
+use axum::extract::State;
+use axum::http::{header, HeaderValue, StatusCode};
+use axum::response::IntoResponse;
+
+use crate::app_state::AppState;
 use crate::conduit::sqlite::pka_episode;
 use crate::models::errors::ApiError;
 use crate::models::sitemap_xml::{SiteMap, Url};
-use crate::Repo;
 
-pub async fn robots_txt() -> Result<impl warp::Reply, Rejection> {
-    let robots = "User-agent: *\nDisallow: ".to_owned();
-
-    Ok(robots)
+pub async fn robots_txt() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/plain; charset=utf-8"),
+        )],
+        "User-agent: *\nDisallow: ".to_owned(),
+    )
 }
 
-pub async fn sitemap_xml(state: Arc<Repo>) -> Result<impl warp::Reply, Rejection> {
-    let mut res = pka_episode::all(&state).await.map_err(ApiError::from)?;
+pub async fn sitemap_xml(State(state): State<AppState>) -> Result<impl IntoResponse, ApiError> {
+    let mut res = pka_episode::all(state.db.as_ref())
+        .await
+        .map_err(ApiError::from)?;
 
     res.sort_by_key(|a| FloatOrd(a.number()));
 
@@ -72,9 +80,14 @@ pub async fn sitemap_xml(state: Arc<Repo>) -> Result<impl warp::Reply, Rejection
         });
 
     let sitemap = SiteMap::from_urls(urls);
+    let xml = sitemap.to_xml_string()?;
 
-    let response =
-        warp::reply::with_header(sitemap.to_xml_string()?, "content-type", "application/xml");
-
-    Ok(response)
+    Ok((
+        StatusCode::OK,
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/xml"),
+        )],
+        xml,
+    ))
 }

@@ -6,25 +6,24 @@ extern crate log;
 use std::env;
 use std::sync::Arc;
 
+use axum::http::{header, Method};
 use dotenv::dotenv;
 use mimalloc::MiMalloc;
 use sqlx::SqlitePool;
+use tokio::net::TcpListener;
 use tokio::sync::RwLock;
-use warp::filters::BoxedFilter;
-use warp::Filter;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
+use crate::app_state::AppState;
 use crate::conduit::sqlite::pka_event;
-use crate::handlers::errors::handle_rejection;
 use crate::models::errors::ApiError;
 use crate::models::pka_event::PkaEvent;
 use crate::redis_db::RedisDb;
-use crate::routes::episode::episode_routes;
-use crate::routes::events::event_routes;
-use crate::routes::search::search_routes;
-use crate::routes::static_files::static_files_routes;
+use crate::routes::build_router;
 use crate::workers::events::update_events;
 use crate::workers::new_episode::latest_episode;
 
+mod app_state;
 mod conduit;
 mod db;
 mod handlers;
@@ -37,8 +36,6 @@ mod workers;
 
 type Result<T> = std::result::Result<T, ApiError>;
 type Repo = SqlitePool;
-type StateFilter = BoxedFilter<(Arc<Repo>,)>;
-type RedisFilter = BoxedFilter<(Arc<RedisDb>,)>;
 type EventIndexType = Arc<RwLock<Box<[PkaEvent]>>>;
 
 lazy_static! {
@@ -57,14 +54,13 @@ async fn main() {
 
     pretty_env_logger::init_timed();
 
-    // DB and Redis
     let redis_client: Arc<RedisDb> = Arc::new(
         RedisDb::new("redis://redis:6379")
             .await
             .expect("Failed to connect to redis."),
     );
 
-    let state: Arc<Repo> = Arc::new(
+    let db_pool: Arc<Repo> = Arc::new(
         db::create_pool(&env::var("DATABASE_URL").expect("'DATABASE_URL' is not set"))
             .await
             .expect("Failed to create SQLite pool"),
@@ -73,36 +69,31 @@ async fn main() {
     {
         *YT_API_KEY.write().await = env::var("YT_API_KEY").expect("'YT_API_KEY' is not set.");
 
-        let all_events = pka_event::all(&state)
+        let all_events = pka_event::all(db_pool.as_ref())
             .await
             .expect("Failed to add all PKA events");
 
         *PKA_EVENTS_INDEX.write().await = all_events.into_boxed_slice();
     }
 
-    // workers
-    let worker_state = || state.clone();
+    let worker_state = || db_pool.clone();
 
     tokio::task::spawn(latest_episode(worker_state()));
     tokio::task::spawn(update_events(worker_state()));
 
-    let state_filter: StateFilter = warp::any().map(move || state.clone()).boxed();
-    let redis_filter: RedisFilter = warp::any().map(move || redis_client.clone()).boxed();
+    let app_state = AppState::new(db_pool.clone(), redis_client.clone());
 
-    let state_c = || state_filter.clone();
-    let redis_c = || redis_filter.clone();
-
-    let cors = warp::cors()
-        .allow_methods(vec!["GET", "POST"])
-        .allow_headers(vec!["authorization", "content-type"])
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST])
+        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
+        .allow_origin(AllowOrigin::predicate(|_, _| true))
         .allow_credentials(true);
 
-    let api = search_routes(state_c(), redis_c())
-        .or(episode_routes(state_c()))
-        .or(event_routes(state_c()))
-        .or(static_files_routes(state_c()))
-        .with(cors)
-        .recover(handle_rejection);
+    let app = build_router().with_state(app_state).layer(cors);
 
-    warp::serve(api).run(([0, 0, 0, 0], 1234)).await;
+    let listener = TcpListener::bind("0.0.0.0:1234")
+        .await
+        .expect("Failed to bind listener");
+
+    axum::serve(listener, app).await.expect("server error");
 }

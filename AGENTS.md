@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-Core service code lives under `src/`, with `main.rs` wiring warp filters from `routes/`, request handlers in `handlers/`, and shared `sqlx` helpers in `db.rs` plus domain models in `models/`. Background ingestion and sync jobs sit in `updater/` and `workers/`; Redis helpers are in `redis_db.rs`, and shared utilities under `conduit/` and `search/`. Database schema migrations (SQLite) live in `migrations/`. Assets for local infra (nginx TLS, docker) are at the repository root: `nginx.conf`, `docker-compose.yml`, `dump.rdb`, and the precomputed `pka_index_data/`.
+Core service code lives under `src/`, with `main.rs` wiring an Axum `Router` from `routes/`, request handlers in `handlers/`, and shared `sqlx` helpers in `db.rs` plus domain models in `models/`. Background ingestion and sync jobs sit in `updater/` and `workers/`; Redis helpers are in `redis_db.rs`, and shared utilities under `conduit/` and `search/`. Database schema migrations (SQLite) live in `migrations/`. Assets for local infra (nginx TLS, docker) are at the repository root: `nginx.conf`, `docker-compose.yml`, `dump.rdb`, and the precomputed `pka_index_data/`.
 
 ## Build, Test, and Development Commands
 - `cargo run` — Start the API with debug logging.
@@ -12,7 +12,7 @@ Core service code lives under `src/`, with `main.rs` wiring warp filters from `r
 - `docker-compose up -d` — Bring up backend plus Redis via containers for end-to-end smoke tests.
 
 ## Coding Style & Naming Conventions
-Rust code should stay `cargo fmt --all` clean (rustfmt's default 4-space indentation, trailing commas, and module ordering). Favor `snake_case` for modules, files, and functions; use `CamelCase` for structs/enums that back API payloads or SQLx row mappings. Keep handler functions focused and return `warp::Reply`. External API keys and secrets belong in `.env` (loaded through `dotenv`) rather than hard-coded constants.
+Rust code should stay `cargo fmt --all` clean (rustfmt's default 4-space indentation, trailing commas, and module ordering). Favor `snake_case` for modules, files, and functions; use `CamelCase` for structs/enums that back API payloads or SQLx row mappings. Keep Axum handlers small, prefer returning `Result<impl IntoResponse, ApiError>`, and bubble errors via `ApiError`. External API keys and secrets belong in `.env` (loaded through `dotenv`) rather than hard-coded constants.
 
 ## Testing Guidelines
 Unit tests live next to their sources inside `#[cfg(test)]` modules (e.g., `src/models/sitemap_xml.rs`). Name tests descriptively with `test_*`. Use deterministic fixtures—clone or stub YouTube responses rather than hitting the network. Run `cargo test` before every PR; add targeted tests for new routes, schema changes, or data transforms. When altering SQL migrations, add assertions that cover the new fields.
