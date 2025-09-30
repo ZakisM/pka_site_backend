@@ -11,7 +11,7 @@
       {
         "name": "upload_date: i64",
         "ordinal": 1,
-        "type_info": "Int64"
+        "type_info": "Integer"
       },
       {
         "name": "title: String",
@@ -21,7 +21,7 @@
       {
         "name": "length_seconds: i32",
         "ordinal": 3,
-        "type_info": "Int64"
+        "type_info": "Integer"
       }
     ],
     "parameters": {

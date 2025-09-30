@@ -75,7 +75,6 @@ convert_error!(serde_json::error::Error);
 convert_error!(reqwest::Error);
 convert_error!(std::string::FromUtf8Error);
 convert_error!(redis::RedisError);
-convert_error!(bb8_redis::redis::RedisError);
 convert_error!(std::io::Error);
 
 #[macro_export]

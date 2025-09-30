@@ -21,7 +21,7 @@
       {
         "name": "upload_date: i64",
         "ordinal": 3,
-        "type_info": "Int64"
+        "type_info": "Integer"
       }
     ],
     "parameters": {
