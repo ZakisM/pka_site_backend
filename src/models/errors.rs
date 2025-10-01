@@ -4,6 +4,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::Serialize;
 use thiserror::Error;
+use tracing::error;
 use utoipa::ToSchema;
 
 #[derive(Debug, Error)]

@@ -3,6 +3,7 @@ use std::sync::LazyLock;
 use chrono::{NaiveTime, Timelike};
 use compact_str::{CompactString, ToCompactString};
 use regex::Regex;
+use tracing::{error, info, warn};
 
 use crate::conduit::sqlite::{pka_episode, pka_event, pka_youtube_details};
 use crate::models::errors::ApiError;

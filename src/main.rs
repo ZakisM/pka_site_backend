@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate log;
-
 use std::env;
 use std::sync::Arc;
 
@@ -14,6 +11,7 @@ use std::sync::LazyLock;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tower_http::cors::{AllowOrigin, CorsLayer};
+use tracing_subscriber::prelude::*;
 
 use crate::app_state::AppState;
 use crate::conduit::sqlite::pka_event;
@@ -53,9 +51,16 @@ static GLOBAL: MiMalloc = MiMalloc;
 async fn main() {
     dotenv().ok();
 
-    env::set_var("RUST_LOG", "INFO");
+    let fmt_layer = tracing_subscriber::fmt::layer();
 
-    pretty_env_logger::init_timed();
+    let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env()
+        .or_else(|_| tracing_subscriber::EnvFilter::try_new("info"))
+        .unwrap();
+
+    tracing_subscriber::registry()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .init();
 
     let redis_client: Arc<RedisDb> = Arc::new(
         RedisDb::new("redis://redis:6379")

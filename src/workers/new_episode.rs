@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use tokio::time;
 use tokio::time::Duration;
+use tracing::{error, info};
 
 use crate::updater::pka::get_latest_pka_episode_data;
 use crate::Repo;
