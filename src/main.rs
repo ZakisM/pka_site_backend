@@ -8,6 +8,7 @@ use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tracing_subscriber::prelude::*;
 
+use crate::config::Config;
 use crate::models::errors::ApiError;
 use crate::models::pka_event::PkaEvent;
 use crate::routes::build_router;
@@ -15,6 +16,7 @@ use crate::yt_api_key::YtApiKey;
 
 mod app_state;
 mod conduit;
+mod config;
 mod db;
 mod docs;
 mod extractors;
@@ -45,13 +47,15 @@ async fn main() {
 
     init_tracing();
 
-    let startup::InitializedApp { app_state, cors } = startup::initialize()
+    let config = Config::from_env().unwrap_or_else(|err| panic!("Configuration error: {err}"));
+
+    let startup::InitializedApp { app_state, cors } = startup::initialize(&config)
         .await
         .expect("Failed to initialize application state");
 
     let app = build_router().with_state(app_state).layer(cors);
 
-    let listener = TcpListener::bind("0.0.0.0:1234")
+    let listener = TcpListener::bind(&config.bind_address)
         .await
         .expect("Failed to bind listener");
 
