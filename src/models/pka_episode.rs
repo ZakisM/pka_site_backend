@@ -4,13 +4,16 @@ use compact_str::CompactString;
 use float_ord::FloatOrd;
 use serde::Serialize;
 use sqlx::FromRow;
+use utoipa::ToSchema;
 
-#[derive(Clone, Debug, Serialize, FromRow)]
+#[derive(Clone, Debug, Serialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaEpisode {
     pub number: f32,
+    #[schema(value_type = String)]
     pub name: CompactString,
     #[serde(skip_serializing)]
+    #[schema(value_type = String)]
     pub youtube_link: CompactString,
     pub upload_date: i64,
 }

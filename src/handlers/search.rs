@@ -9,6 +9,22 @@ use crate::models::errors::ApiError;
 use crate::models::search::SearchQuery;
 use crate::search::pka_search::{search_episode, search_events};
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/search/episodes",
+    request_body = SearchQuery,
+    responses(
+        (
+            status = 200,
+            description = "Compressed search results",
+            content_type = "application/octet-stream",
+            body = String
+        ),
+        (status = 400, description = "Invalid search request", body = crate::models::errors::ErrorResponseBody),
+        (status = 500, description = "Internal server error", body = crate::models::errors::ErrorResponseBody)
+    ),
+    tag = "Search"
+)]
 pub async fn search_pka_episode(
     State(state): State<AppState>,
     AppJson(payload): AppJson<SearchQuery>,
@@ -18,6 +34,22 @@ pub async fn search_pka_episode(
     Ok(binary_response(res))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/search/events",
+    request_body = SearchQuery,
+    responses(
+        (
+            status = 200,
+            description = "Compressed search results",
+            content_type = "application/octet-stream",
+            body = String
+        ),
+        (status = 400, description = "Invalid search request", body = crate::models::errors::ErrorResponseBody),
+        (status = 500, description = "Internal server error", body = crate::models::errors::ErrorResponseBody)
+    ),
+    tag = "Search"
+)]
 pub async fn search_pka_event(
     State(state): State<AppState>,
     AppJson(payload): AppJson<SearchQuery>,

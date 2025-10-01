@@ -4,6 +4,7 @@ use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde::Serialize;
 use thiserror::Error;
+use utoipa::ToSchema;
 
 #[derive(Debug, Error)]
 pub enum ApiError {
@@ -54,10 +55,10 @@ impl ApiError {
     }
 }
 
-#[derive(Serialize)]
-struct ErrorResponseBody {
-    message: String,
-    code: u16,
+#[derive(Serialize, ToSchema)]
+pub struct ErrorResponseBody {
+    pub message: String,
+    pub code: u16,
 }
 
 impl IntoResponse for ApiError {

@@ -10,6 +10,7 @@ Core service code lives under `src/`, with `main.rs` wiring an Axum `Router` fro
 - `cargo test` — Run unit tests embedded in modules.
 - `cargo sqlx prepare -- --bin pka_site_backend` — Regenerate `.sqlx/` metadata after changing queries or migrations (requires `DATABASE_URL`).
 - `docker-compose up -d` — Bring up backend plus Redis via containers for end-to-end smoke tests.
+- `cargo run` — exposes the API along with `GET /openapi.json` for generated OpenAPI docs.
 
 ## Coding Style & Naming Conventions
 Rust code should stay `cargo fmt --all` clean (rustfmt's default 4-space indentation, trailing commas, and module ordering). Favor `snake_case` for modules, files, and functions; use `CamelCase` for structs/enums that back API payloads or SQLx row mappings. Keep Axum handlers small, prefer returning `Result<impl IntoResponse, ApiError>`, and bubble errors via `ApiError`. External API keys and secrets belong in `.env` (loaded through `dotenv`) rather than hard-coded constants.

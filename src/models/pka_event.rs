@@ -3,19 +3,21 @@ use std::cmp::Ordering;
 use compact_str::CompactString;
 use float_ord::FloatOrd;
 use serde::Serialize;
+use sqlx::FromRow;
+use utoipa::ToSchema;
 
 use crate::search::Searchable;
 
-use sqlx::FromRow;
-
-#[derive(Clone, Debug, Serialize, FromRow)]
+#[derive(Clone, Debug, Serialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaEvent {
     #[serde(skip_serializing)]
+    #[schema(value_type = String)]
     pub event_id: CompactString,
     #[serde(skip_serializing)]
     pub episode_number: f32,
     pub timestamp: i32,
+    #[schema(value_type = String)]
     pub description: CompactString,
     pub length_seconds: i32,
     pub upload_date: i64,

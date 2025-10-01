@@ -1,10 +1,11 @@
 use serde::Serialize;
+use utoipa::ToSchema;
 
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaEpisodeWithAll {
     episode: PkaEpisode,

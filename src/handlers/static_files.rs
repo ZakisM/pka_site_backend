@@ -9,6 +9,15 @@ use crate::conduit::sqlite::pka_episode;
 use crate::models::errors::ApiError;
 use crate::models::sitemap_xml::{SiteMap, Url};
 
+#[utoipa::path(
+    get,
+    path = "/robots.txt",
+    responses(
+        (status = 200, description = "Robots rules", content_type = "text/plain", body = String),
+        (status = 500, description = "Internal server error", body = crate::models::errors::ErrorResponseBody)
+    ),
+    tag = "Static"
+)]
 pub async fn robots_txt() -> impl IntoResponse {
     (
         StatusCode::OK,
@@ -20,6 +29,20 @@ pub async fn robots_txt() -> impl IntoResponse {
     )
 }
 
+#[utoipa::path(
+    get,
+    path = "/sitemap.xml",
+    responses(
+        (
+            status = 200,
+            description = "Sitemap XML",
+            content_type = "application/xml",
+            body = String
+        ),
+        (status = 500, description = "Internal server error", body = crate::models::errors::ErrorResponseBody)
+    ),
+    tag = "Static"
+)]
 pub async fn sitemap_xml(State(state): State<AppState>) -> Result<impl IntoResponse, ApiError> {
     let mut res = pka_episode::all(state.db.as_ref())
         .await

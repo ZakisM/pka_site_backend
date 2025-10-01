@@ -1,14 +1,16 @@
 use compact_str::CompactString;
 use serde::Serialize;
-
 use sqlx::FromRow;
+use utoipa::ToSchema;
 
-#[derive(Clone, Debug, Serialize, FromRow)]
+#[derive(Clone, Debug, Serialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaYoutubeDetails {
+    #[schema(value_type = String)]
     pub video_id: CompactString,
     #[serde(skip_serializing)]
     pub episode_number: f32,
+    #[schema(value_type = String)]
     pub title: CompactString,
     pub length_seconds: i32,
 }

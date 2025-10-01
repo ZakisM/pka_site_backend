@@ -7,6 +7,8 @@ use std::env;
 use std::sync::Arc;
 
 use axum::http::{header, Method};
+use axum::routing::get;
+use axum::{Json, Router};
 use dotenv::dotenv;
 use mimalloc::MiMalloc;
 use sqlx::SqlitePool;
@@ -26,6 +28,7 @@ use crate::workers::new_episode::latest_episode;
 mod app_state;
 mod conduit;
 mod db;
+mod docs;
 mod extractors;
 mod handlers;
 mod models;
@@ -83,6 +86,12 @@ async fn main() {
     tokio::task::spawn(update_events(worker_state()));
 
     let app_state = AppState::new(db_pool.clone(), redis_client.clone());
+    let openapi = Arc::new(docs::openapi());
+    let docs_router = Router::new().route("/openapi.json", {
+        let openapi = openapi.clone();
+
+        get(move || async { Json(openapi) })
+    });
 
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])
@@ -90,7 +99,10 @@ async fn main() {
         .allow_origin(AllowOrigin::predicate(|_, _| true))
         .allow_credentials(true);
 
-    let app = build_router().with_state(app_state).layer(cors);
+    let app = build_router()
+        .merge(docs_router)
+        .with_state(app_state)
+        .layer(cors);
 
     let listener = TcpListener::bind("0.0.0.0:1234")
         .await

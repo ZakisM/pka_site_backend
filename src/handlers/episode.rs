@@ -11,6 +11,18 @@ use crate::models::errors::ApiError;
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
 use crate::models::success_response::SuccessResponse;
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/episodes/{number}",
+    params(("number" = f32, Path, description = "Episode number")),
+    responses(
+        (status = 200, description = "Episode details", body = crate::docs::EpisodeResponse),
+        (status = 400, description = "Invalid episode number", body = crate::models::errors::ErrorResponseBody),
+        (status = 404, description = "Episode not found", body = crate::models::errors::ErrorResponseBody),
+        (status = 500, description = "Internal server error", body = crate::models::errors::ErrorResponseBody)
+    ),
+    tag = "Episodes"
+)]
 pub async fn watch_pka_episode(
     AppPath(number): AppPath<f32>,
     State(state): State<AppState>,
@@ -22,6 +34,18 @@ pub async fn watch_pka_episode(
     Ok(SuccessResponse::new(res))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/episodes/{number}/youtube-link",
+    params(("number" = f32, Path, description = "Episode number")),
+    responses(
+        (status = 200, description = "Episode youtube link", body = crate::docs::YoutubeLinkResponse),
+        (status = 400, description = "Invalid episode number", body = crate::models::errors::ErrorResponseBody),
+        (status = 404, description = "Episode not found", body = crate::models::errors::ErrorResponseBody),
+        (status = 500, description = "Internal server error", body = crate::models::errors::ErrorResponseBody)
+    ),
+    tag = "Episodes"
+)]
 pub async fn find_pka_episode_youtube_link(
     AppPath(number): AppPath<f32>,
     State(state): State<AppState>,
@@ -33,6 +57,15 @@ pub async fn find_pka_episode_youtube_link(
     Ok(SuccessResponse::new(res))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/episodes/latest",
+    responses(
+        (status = 200, description = "Latest episode", body = crate::docs::EpisodeResponse),
+        (status = 500, description = "Internal server error", body = crate::models::errors::ErrorResponseBody)
+    ),
+    tag = "Episodes"
+)]
 pub async fn latest_pka_episode(
     State(state): State<AppState>,
 ) -> Result<SuccessResponse<PkaEpisodeWithAll>, ApiError> {
@@ -47,6 +80,15 @@ pub async fn latest_pka_episode(
     Ok(SuccessResponse::new(res))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/episodes/random",
+    responses(
+        (status = 200, description = "Random episode", body = crate::docs::EpisodeResponse),
+        (status = 500, description = "Internal server error", body = crate::models::errors::ErrorResponseBody)
+    ),
+    tag = "Episodes"
+)]
 pub async fn random_pka_episode(
     State(state): State<AppState>,
 ) -> Result<SuccessResponse<PkaEpisodeWithAll>, ApiError> {
