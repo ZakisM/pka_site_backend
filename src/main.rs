@@ -7,6 +7,7 @@ use sqlx::SqlitePool;
 use std::sync::LazyLock;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
+use tracing::info;
 use tracing_subscriber::prelude::*;
 
 use crate::config::Config;
@@ -43,7 +44,11 @@ static PKA_EVENTS_INDEX: LazyLock<EventIndexType> =
 static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
+    let _ = run().await;
+}
+
+async fn run() -> Result<()> {
     dotenv().ok();
 
     init_tracing();
@@ -54,15 +59,20 @@ async fn main() -> Result<()> {
         .await
         .context("Failed to initialize application state")?;
 
-    let app = build_router().with_state(app_state).layer(cors);
+    let mut app = build_router();
+    if config.expose_openapi {
+        app = app.merge(routes::docs::router());
+    }
+
+    let app = app.with_state(app_state).layer(cors);
 
     let listener = TcpListener::bind(&config.bind_address)
         .await
         .context("Failed to bind listener")?;
 
-    axum::serve(listener, app)
-        .await
-        .context("Server error")?;
+    info!(address = %config.bind_address, "HTTP server listening");
+
+    axum::serve(listener, app).await.context("Server error")?;
 
     Ok(())
 }
