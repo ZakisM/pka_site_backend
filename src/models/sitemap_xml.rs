@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-use crate::Result;
-
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct SiteMap {
@@ -26,7 +24,7 @@ impl SiteMap {
         &self.url_set.urls
     }
 
-    pub fn to_xml_string(&self) -> Result<String> {
+    pub fn to_xml_string(&self) -> anyhow::Result<String> {
         let mut xml = String::from("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n");
         let xml_body = quick_xml::se::to_string(&self)?;
 

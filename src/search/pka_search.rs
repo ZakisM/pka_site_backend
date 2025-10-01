@@ -7,10 +7,10 @@ use crate::conduit::sqlite::pka_episode;
 use crate::models::search::PkaEventSearchResult;
 use crate::redis_db::RedisDb;
 use crate::search::{Encodeable, Searchable};
+use crate::Repo;
 use crate::PKA_EVENTS_INDEX;
-use crate::{Repo, Result};
 
-pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<u8>> {
+pub async fn search_episode(state: &Repo, query: &str) -> anyhow::Result<Vec<u8>> {
     let all_episodes = pka_episode::all_with_yt_details(state)
         .await
         .context("Failed to load episodes for search")?;
@@ -28,7 +28,7 @@ pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<u8>> {
     Ok(results)
 }
 
-pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
+pub async fn search_events(redis: &RedisDb, query: &str) -> anyhow::Result<Vec<u8>> {
     let redis_tag = "EVENTS";
 
     match event_cache::get(redis, redis_tag, query.to_owned()).await {

@@ -1,8 +1,6 @@
 use async_compression::tokio::write::ZstdEncoder;
 use tokio::io::AsyncWriteExt;
 
-use crate::Result;
-
 pub mod pka_search;
 
 pub trait Searchable {
@@ -13,7 +11,7 @@ pub trait Encodeable
 where
     Self: bitcode::Encode,
 {
-    async fn as_bitcode_compressed(&self) -> Result<Vec<u8>> {
+    async fn as_bitcode_compressed(&self) -> anyhow::Result<Vec<u8>> {
         let bytes = bitcode::encode(self);
 
         let mut encoder = ZstdEncoder::with_quality(Vec::new(), async_compression::Level::Default);
