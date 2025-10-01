@@ -1,11 +1,28 @@
-use warp::filters::BoxedFilter;
-use warp::Filter;
+pub mod docs;
+mod episodes;
+mod events;
+mod search;
+mod static_assets;
 
-pub mod episode;
-pub mod events;
-pub mod search;
-pub mod static_files;
+use axum::http::StatusCode;
+use axum::routing::any;
+use axum::Router;
 
-fn api_path_prefix() -> BoxedFilter<()> {
-    warp::path!("v1" / "api" / ..).boxed()
+use crate::app_state::AppState;
+use crate::models::errors::ApiError;
+
+pub fn build_router() -> Router<AppState> {
+    let api = Router::new()
+        .nest("/episodes", episodes::router())
+        .nest("/events", events::router())
+        .nest("/search", search::router());
+
+    Router::new()
+        .nest("/api/v1", api)
+        .merge(static_assets::router())
+        .fallback(any(not_found))
+}
+
+async fn not_found() -> ApiError {
+    ApiError::new("Page not found.", StatusCode::NOT_FOUND)
 }

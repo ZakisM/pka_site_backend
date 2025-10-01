@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT number AS \"number: f32\" FROM pka_episode ORDER BY RANDOM() LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "name": "number: f32",
+        "ordinal": 0,
+        "type_info": "Float"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7d36c299ffe39c95699c565d919e78c4089dd4045a9a37acd77ba493d51aa069"
+}

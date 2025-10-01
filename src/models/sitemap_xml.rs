@@ -61,17 +61,17 @@ pub struct Url {
 }
 
 impl Url {
-    pub fn new<T: AsRef<str>>(
-        loc: T,
-        last_mod: Option<T>,
-        change_freq: Option<T>,
-        priority: Option<T>,
+    pub fn new(
+        loc: impl Into<String>,
+        last_mod: Option<String>,
+        change_freq: Option<String>,
+        priority: Option<String>,
     ) -> Self {
         Url {
-            loc: XmlVal(loc.as_ref().to_owned()),
-            last_mod: last_mod.map(|s| XmlVal(s.as_ref().to_owned())),
-            change_freq: change_freq.map(|s| XmlVal(s.as_ref().to_owned())),
-            priority: priority.map(|s| XmlVal(s.as_ref().to_owned())),
+            loc: XmlVal(loc.into()),
+            last_mod: last_mod.map(XmlVal),
+            change_freq: change_freq.map(XmlVal),
+            priority: priority.map(XmlVal),
         }
     }
 
@@ -111,15 +111,15 @@ mod tests {
         let sitemap = SiteMap::from_urls(vec![
             Url::new(
                 "https://example.com/",
-                Some("2005-01-01"),
-                Some("monthly"),
-                Some("0.8"),
+                Some("2005-01-01".to_owned()),
+                Some("monthly".to_owned()),
+                Some("0.8".to_owned()),
             ),
             Url::new(
                 "https://example2.com/",
-                Some("2025-01-01"),
-                Some("weekly"),
-                Some("0.2"),
+                Some("2025-01-01".to_owned()),
+                Some("weekly".to_owned()),
+                Some("0.2".to_owned()),
             ),
         ]);
 

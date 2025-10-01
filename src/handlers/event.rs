@@ -1,16 +1,30 @@
-use std::sync::Arc;
+use axum::extract::State;
 
-use warp::Rejection;
-
+use crate::app_state::AppState;
 use crate::conduit::sqlite::pka_event;
-use crate::models::errors::ApiError;
+use crate::models::errors::{ApiError, ErrorResponseBody};
+use crate::models::search::PkaEventSearchResult;
 use crate::models::success_response::SuccessResponse;
-use crate::Repo;
 
-pub async fn random_pka_event(state: Arc<Repo>) -> Result<impl warp::Reply, Rejection> {
-    let random_events = pka_event::random_amount(&state)
-        .await
-        .map_err(|_| ApiError::new_internal_error("Couldn't find random events."))?;
+#[utoipa::path(
+    get,
+    path = "/api/v1/events/random",
+    responses(
+        (
+            status = 200,
+            description = "Random event",
+            body = SuccessResponse<PkaEventSearchResult>
+        ),
+        (status = 500, description = "Internal server error", body = ErrorResponseBody)
+    ),
+    tag = "Events"
+)]
+pub async fn random_pka_event(
+    State(state): State<AppState>,
+) -> Result<SuccessResponse<PkaEventSearchResult>, ApiError> {
+    let random_event = pka_event::random_amount(state.db.as_ref())
+        .await?
+        .ok_or_else(|| ApiError::new_internal_error("Couldn't find random events."))?;
 
-    Ok(SuccessResponse::new(random_events))
+    Ok(SuccessResponse::new(random_event))
 }

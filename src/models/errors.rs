@@ -1,109 +1,128 @@
-use std::fmt;
-
-use serde::ser::{SerializeStruct, Serializer};
+use axum::extract::rejection::{JsonRejection, PathRejection};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::Json;
 use serde::Serialize;
-use warp::http::StatusCode;
-use warp::reply::Response;
+use thiserror::Error;
+use tracing::error;
+use utoipa::ToSchema;
 
-use crate::convert_error;
+use anyhow::Error as AnyhowError;
 
-#[derive(Clone, Debug)]
-pub struct ApiError {
-    pub message: String,
-    pub code: StatusCode,
-}
-
-impl fmt::Display for ApiError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({} - {})", self.code.as_str(), self.message)
-    }
-}
-
-impl Serialize for ApiError {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("ApiError", 2)?;
-        state.serialize_field("message", &self.message)?;
-        state.serialize_field("code", &self.code.as_u16())?;
-        state.end()
-    }
+#[derive(Debug, Error)]
+pub enum ApiError {
+    #[error("{message}")]
+    WithStatus { code: StatusCode, message: String },
+    #[error(transparent)]
+    QuickXmlDe(#[from] quick_xml::DeError),
+    #[error(transparent)]
+    QuickXmlSe(#[from] quick_xml::SeError),
+    #[error(transparent)]
+    Chrono(#[from] chrono::ParseError),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
+    #[error(transparent)]
+    Utf8(#[from] std::string::FromUtf8Error),
+    #[error(transparent)]
+    Redis(#[from] redis::RedisError),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }
 
 impl ApiError {
-    pub fn new<S: AsRef<str>>(message: S, code: StatusCode) -> Self {
-        Self {
-            message: message.as_ref().to_string(),
+    pub fn new(message: impl Into<String>, code: StatusCode) -> Self {
+        Self::WithStatus {
             code,
+            message: message.into(),
         }
     }
 
-    pub fn new_internal_error<S: AsRef<str>>(message: S) -> Self {
-        Self {
-            message: message.as_ref().to_string(),
-            code: StatusCode::INTERNAL_SERVER_ERROR,
+    pub fn new_internal_error(message: impl Into<String>) -> Self {
+        Self::new(message, StatusCode::INTERNAL_SERVER_ERROR)
+    }
+
+    fn status_code(&self) -> StatusCode {
+        match self {
+            ApiError::WithStatus { code, .. } => *code,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+
+    fn message(&self) -> String {
+        match self {
+            ApiError::WithStatus { message, .. } => message.clone(),
+            _ => self.to_string(),
         }
     }
 }
 
-impl warp::reject::Reject for ApiError {}
+#[derive(Serialize, ToSchema)]
+pub struct ErrorResponseBody {
+    pub message: String,
+    pub code: u16,
+}
 
-impl warp::Reply for ApiError {
+impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let json = warp::reply::json(&self);
-        warp::reply::with_status(json, self.code).into_response()
+        let status = self.status_code();
+
+        if status.is_server_error() {
+            error!("{self}");
+        }
+
+        let body = ErrorResponseBody {
+            message: self.message(),
+            code: status.as_u16(),
+        };
+
+        (status, Json(body)).into_response()
     }
 }
 
-impl From<diesel::result::Error> for ApiError {
-    fn from(de_err: diesel::result::Error) -> Self {
-        let err_string = de_err.to_string();
-
-        error!("{}", err_string);
-
-        match err_string.as_str() {
-            "Record not found" | "NotFound" => {
+impl From<sqlx::Error> for ApiError {
+    fn from(err: sqlx::Error) -> Self {
+        error!("{err}");
+        match err {
+            sqlx::Error::RowNotFound => {
                 ApiError::new("Data could not be found.", StatusCode::NOT_FOUND)
             }
-            _ => ApiError::new(err_string, StatusCode::INTERNAL_SERVER_ERROR),
+            _ => ApiError::new(err.to_string(), StatusCode::INTERNAL_SERVER_ERROR),
         }
     }
 }
 
-convert_error!(quick_xml::DeError);
-convert_error!(quick_xml::SeError);
-convert_error!(chrono::ParseError);
-convert_error!(serde_json::error::Error);
-convert_error!(reqwest::Error);
-convert_error!(std::string::FromUtf8Error);
-convert_error!(redis::RedisError);
-convert_error!(bb8_redis::redis::RedisError);
-convert_error!(std::io::Error);
+impl From<AnyhowError> for ApiError {
+    fn from(err: AnyhowError) -> Self {
+        error!("{err}");
+        ApiError::new_internal_error(err.to_string())
+    }
+}
 
-#[macro_export]
-macro_rules! convert_error {
-    ($err_type:ty) => {
-        impl From<$err_type> for ApiError {
-            fn from(err: $err_type) -> Self {
-                let err_str = err.to_string();
+impl From<JsonRejection> for ApiError {
+    fn from(rejection: JsonRejection) -> Self {
+        ApiError::new(rejection.body_text(), rejection.status())
+    }
+}
 
-                error!("{}", &err_str);
+impl From<PathRejection> for ApiError {
+    fn from(rejection: PathRejection) -> Self {
+        use axum::extract::path::ErrorKind;
 
-                ApiError::new(err_str, StatusCode::INTERNAL_SERVER_ERROR)
+        match rejection {
+            PathRejection::FailedToDeserializePathParams(inner) => {
+                let kind = inner.into_kind();
+                let status = match kind {
+                    ErrorKind::UnsupportedType { .. } => StatusCode::INTERNAL_SERVER_ERROR,
+                    _ => StatusCode::BAD_REQUEST,
+                };
+                ApiError::new(kind.to_string(), status)
             }
-        }
-    };
-
-    ($err_type:ty, $custom_message:expr) => {
-        impl From<$err_type> for ApiError {
-            fn from(err: $err_type) -> Self {
-                let err_str = err.to_string();
-
-                error!("{}", &err_str);
-
-                ApiError::new($custom_message, StatusCode::INTERNAL_SERVER_ERROR)
+            PathRejection::MissingPathParams(inner) => {
+                ApiError::new(inner.to_string(), StatusCode::INTERNAL_SERVER_ERROR)
             }
+            other => ApiError::new(other.to_string(), StatusCode::BAD_REQUEST),
         }
-    };
+    }
 }

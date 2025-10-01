@@ -3,19 +3,19 @@ use std::cmp::Ordering;
 use compact_str::CompactString;
 use float_ord::FloatOrd;
 use serde::Serialize;
+use sqlx::FromRow;
+use utoipa::ToSchema;
 
-use crate::models::diesel_f32::DieselF32;
-use crate::schema::pka_episode;
-
-#[derive(Debug, Serialize, Insertable, Queryable, Identifiable)]
+#[derive(Clone, Debug, Serialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[diesel(primary_key(number), table_name = pka_episode)]
 pub struct PkaEpisode {
-    number: DieselF32,
-    name: CompactString,
+    pub number: f32,
+    #[schema(value_type = String)]
+    pub name: CompactString,
     #[serde(skip_serializing)]
-    youtube_link: CompactString,
-    upload_date: i64,
+    #[schema(value_type = String)]
+    pub youtube_link: CompactString,
+    pub upload_date: i64,
 }
 
 impl PkaEpisode {
@@ -26,7 +26,7 @@ impl PkaEpisode {
         upload_date: i64,
     ) -> Self {
         Self {
-            number: DieselF32(number),
+            number,
             name,
             youtube_link,
             upload_date,
@@ -34,21 +34,13 @@ impl PkaEpisode {
     }
 
     pub fn number(&self) -> f32 {
-        self.number.0
-    }
-
-    pub fn name(&self) -> &str {
-        self.name.as_ref()
-    }
-
-    pub fn youtube_link(&self) -> &str {
-        self.youtube_link.as_str()
+        self.number
     }
 }
 
 impl std::cmp::Ord for PkaEpisode {
     fn cmp(&self, other: &Self) -> Ordering {
-        FloatOrd(self.number.0).cmp(&FloatOrd(other.number.0))
+        FloatOrd(self.number).cmp(&FloatOrd(other.number))
     }
 }
 
@@ -60,7 +52,7 @@ impl std::cmp::PartialOrd for PkaEpisode {
 
 impl std::cmp::PartialEq for PkaEpisode {
     fn eq(&self, other: &Self) -> bool {
-        FloatOrd(self.number.0).eq(&FloatOrd(other.number.0))
+        FloatOrd(self.number).eq(&FloatOrd(other.number))
     }
 }
 

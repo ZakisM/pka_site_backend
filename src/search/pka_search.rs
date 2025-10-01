@@ -1,4 +1,5 @@
 use aho_corasick::AhoCorasickBuilder;
+use anyhow::Context;
 use rayon::prelude::*;
 
 use crate::conduit::redis::event_cache;
@@ -10,14 +11,19 @@ use crate::PKA_EVENTS_INDEX;
 use crate::{Repo, Result};
 
 pub async fn search_episode(state: &Repo, query: &str) -> Result<Vec<u8>> {
-    let all_episodes = pka_episode::all_with_yt_details(state).await?;
+    let all_episodes = pka_episode::all_with_yt_details(state)
+        .await
+        .context("Failed to load episodes for search")?;
 
     let results = search(query, &all_episodes)
         .into_iter()
         .cloned()
         .collect::<Vec<_>>();
 
-    let results = results.as_bitcode_compressed().await?;
+    let results = results
+        .as_bitcode_compressed()
+        .await
+        .context("Failed to compress episode search results")?;
 
     Ok(results)
 }
@@ -36,7 +42,10 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> Result<Vec<u8>> {
                 .map(PkaEventSearchResult::from)
                 .collect::<Vec<_>>();
 
-            let results = results.as_bitcode_compressed().await?;
+            let results = results
+                .as_bitcode_compressed()
+                .await
+                .context("Failed to compress event search results")?;
 
             event_cache::set(redis, redis_tag, query.to_owned(), results.as_slice()).await?;
 

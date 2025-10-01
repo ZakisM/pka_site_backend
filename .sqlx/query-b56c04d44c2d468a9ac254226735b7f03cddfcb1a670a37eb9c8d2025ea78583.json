@@ -1,0 +1,50 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n            event_id       AS \"event_id: CompactString\",\n            episode_number AS \"episode_number: f32\",\n            timestamp      AS \"timestamp: i32\",\n            description    AS \"description: CompactString\",\n            length_seconds AS \"length_seconds: i32\",\n            upload_date    AS \"upload_date: i64\"\n          FROM pka_event",
+  "describe": {
+    "columns": [
+      {
+        "name": "event_id: CompactString",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "episode_number: f32",
+        "ordinal": 1,
+        "type_info": "Float"
+      },
+      {
+        "name": "timestamp: i32",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "description: CompactString",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "length_seconds: i32",
+        "ordinal": 4,
+        "type_info": "Integer"
+      },
+      {
+        "name": "upload_date: i64",
+        "ordinal": 5,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "b56c04d44c2d468a9ac254226735b7f03cddfcb1a670a37eb9c8d2025ea78583"
+}

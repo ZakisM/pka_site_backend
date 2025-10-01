@@ -1,96 +1,135 @@
 use compact_str::CompactString;
-use diesel::prelude::*;
-use diesel::result::Error;
-use rand::prelude::IndexedRandom;
 
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
 use crate::models::search::PkaEpisodeSearchResult;
-use crate::schema::pka_episode::dsl::*;
-use crate::schema::pka_event::columns::timestamp;
-use crate::schema::pka_youtube_details::columns::{length_seconds, title};
-use crate::schema::pka_youtube_details::dsl::pka_youtube_details;
-use crate::{schema, Repo};
+use crate::Repo;
 
-#[allow(unused)]
-pub async fn all(repo: &Repo) -> Result<Vec<PkaEpisode>, Error> {
-    repo.run(move |conn| pka_episode.load::<PkaEpisode>(conn))
-        .await
-}
-
-pub async fn find_youtube_link(repo: &Repo, id: f32) -> Result<CompactString, Error> {
-    repo.run(move |conn| {
-        pka_episode
-            .select(youtube_link)
-            .find(id)
-            .first::<CompactString>(conn)
-    })
+pub async fn all(repo: &Repo) -> Result<Vec<PkaEpisode>, sqlx::Error> {
+    sqlx::query_as!(
+        PkaEpisode,
+        r#"SELECT
+            number        AS "number: f32",
+            name          AS "name: CompactString",
+            youtube_link  AS "youtube_link: CompactString",
+            upload_date   AS "upload_date: i64"
+          FROM pka_episode"#
+    )
+    .fetch_all(repo)
     .await
 }
 
-pub async fn latest(repo: &Repo) -> Result<f32, Error> {
-    repo.run(move |conn| {
-        pka_episode
-            .select(number)
-            .order_by(number.desc())
-            .first::<f32>(conn)
-    })
+pub async fn find_youtube_link(repo: &Repo, id: f32) -> Result<CompactString, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"SELECT youtube_link AS "youtube_link: CompactString" FROM pka_episode WHERE number = ?"#,
+        id
+    )
+    .fetch_one(repo)
     .await
 }
 
-pub async fn random(repo: &Repo) -> Result<f32, Error> {
-    repo.run(move |conn| {
-        let all_episode_numbers = pka_episode
-            .select(number)
-            .order_by(number.desc())
-            .load::<f32>(conn)?;
-
-        Ok(*all_episode_numbers
-            .choose(&mut rand::rng())
-            .unwrap_or(&0.0))
-    })
+pub async fn latest(repo: &Repo) -> Result<f32, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"SELECT number AS "number: f32" FROM pka_episode ORDER BY number DESC LIMIT 1"#
+    )
+    .fetch_one(repo)
     .await
 }
 
-pub async fn all_with_yt_details(repo: &Repo) -> Result<Vec<PkaEpisodeSearchResult>, Error> {
-    repo.run(move |conn| {
-        let all_episodes: Vec<PkaEpisodeSearchResult> = pka_episode
-            .order_by(number.desc())
-            .inner_join(pka_youtube_details)
-            .select((number, upload_date, title, length_seconds))
-            .load(conn)?;
-
-        Ok(all_episodes)
-    })
+pub async fn random(repo: &Repo) -> Result<f32, sqlx::Error> {
+    sqlx::query_scalar!(
+        r#"SELECT number AS "number: f32" FROM pka_episode ORDER BY RANDOM() LIMIT 1"#
+    )
+    .fetch_one(repo)
     .await
 }
 
-pub async fn find_with_all(repo: &Repo, id: f32) -> Result<PkaEpisodeWithAll, Error> {
-    repo.run(move |conn| {
-        let episode = pka_episode.find(id).first::<PkaEpisode>(conn)?;
-
-        let events = <PkaEvent as BelongingToDsl<&PkaEpisode>>::belonging_to(&episode)
-            .order_by(timestamp.asc())
-            .load(conn)?;
-
-        let youtube_details =
-            <PkaYoutubeDetails as BelongingToDsl<&PkaEpisode>>::belonging_to(&episode)
-                .first(conn)?;
-
-        Ok(PkaEpisodeWithAll::new(episode, youtube_details, events))
-    })
+pub async fn all_with_yt_details(repo: &Repo) -> Result<Vec<PkaEpisodeSearchResult>, sqlx::Error> {
+    sqlx::query_as!(
+        PkaEpisodeSearchResult,
+        r#"SELECT
+            e.number         AS "episode_number: f32",
+            e.upload_date    AS "upload_date: i64",
+            y.title          AS "title: String",
+            y.length_seconds AS "length_seconds: i32"
+          FROM pka_episode e
+          INNER JOIN pka_youtube_details y ON y.episode_number = e.number
+          ORDER BY e.number DESC"#
+    )
+    .fetch_all(repo)
     .await
 }
 
-pub async fn insert(repo: &Repo, episode: PkaEpisode) -> Result<(), Error> {
-    repo.run(move |conn| {
-        diesel::insert_into(schema::pka_episode::table)
-            .values(episode)
-            .execute(conn)?;
+pub async fn find_with_all(repo: &Repo, id: f32) -> Result<PkaEpisodeWithAll, sqlx::Error> {
+    let episode = sqlx::query_as!(
+        PkaEpisode,
+        r#"SELECT
+            number       AS "number: f32",
+            name         AS "name: CompactString",
+            youtube_link AS "youtube_link: CompactString",
+            upload_date  AS "upload_date: i64"
+          FROM pka_episode
+          WHERE number = ?"#,
+        id
+    )
+    .fetch_one(repo)
+    .await?;
 
-        Ok(())
-    })
-    .await
+    let events = sqlx::query_as!(
+        PkaEvent,
+        r#"SELECT
+            event_id       AS "event_id: CompactString",
+            episode_number AS "episode_number: f32",
+            timestamp      AS "timestamp: i32",
+            description    AS "description: CompactString",
+            length_seconds AS "length_seconds: i32",
+            upload_date    AS "upload_date: i64"
+          FROM pka_event
+          WHERE episode_number = ?
+          ORDER BY timestamp ASC"#,
+        id
+    )
+    .fetch_all(repo)
+    .await?;
+
+    let youtube_details = sqlx::query_as!(
+        PkaYoutubeDetails,
+        r#"SELECT
+            video_id       AS "video_id: CompactString",
+            episode_number AS "episode_number: f32",
+            title          AS "title: CompactString",
+            length_seconds AS "length_seconds: i32"
+          FROM pka_youtube_details
+          WHERE episode_number = ?
+          LIMIT 1"#,
+        id
+    )
+    .fetch_one(repo)
+    .await?;
+
+    Ok(PkaEpisodeWithAll::new(episode, youtube_details, events))
+}
+
+pub async fn insert(repo: &Repo, episode: PkaEpisode) -> Result<(), sqlx::Error> {
+    let PkaEpisode {
+        number,
+        name,
+        youtube_link,
+        upload_date,
+    } = episode;
+
+    sqlx::query!(
+        r#"INSERT INTO pka_episode (number, name, youtube_link, upload_date)
+           VALUES (?, ?, ?, ?)"#,
+        number,
+        name,
+        youtube_link,
+        upload_date
+    )
+    .execute(repo)
+    .await?;
+
+    Ok(())
 }

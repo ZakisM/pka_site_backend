@@ -1,56 +1,88 @@
-use std::sync::Arc;
-
 use float_ord::FloatOrd;
-use warp::Rejection;
 
+use anyhow::Context;
+use axum::extract::State;
+use axum::http::{header, HeaderValue, StatusCode};
+use axum::response::IntoResponse;
+
+use crate::app_state::AppState;
 use crate::conduit::sqlite::pka_episode;
-use crate::models::errors::ApiError;
+use crate::models::errors::{ApiError, ErrorResponseBody};
 use crate::models::sitemap_xml::{SiteMap, Url};
-use crate::Repo;
 
-pub async fn robots_txt() -> Result<impl warp::Reply, Rejection> {
-    let robots = "User-agent: *\nDisallow: ".to_owned();
-
-    Ok(robots)
+#[utoipa::path(
+    get,
+    path = "/robots.txt",
+    responses(
+        (status = 200, description = "Robots rules", content_type = "text/plain", body = String),
+        (status = 500, description = "Internal server error", body = ErrorResponseBody)
+    ),
+    tag = "Static"
+)]
+pub async fn robots_txt() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("text/plain; charset=utf-8"),
+        )],
+        "User-agent: *\nDisallow: ".to_owned(),
+    )
 }
 
-pub async fn sitemap_xml(state: Arc<Repo>) -> Result<impl warp::Reply, Rejection> {
-    let mut res = pka_episode::all(&state).await.map_err(ApiError::from)?;
+#[utoipa::path(
+    get,
+    path = "/sitemap.xml",
+    responses(
+        (
+            status = 200,
+            description = "Sitemap XML",
+            content_type = "application/xml",
+            body = String
+        ),
+        (status = 500, description = "Internal server error", body = ErrorResponseBody)
+    ),
+    tag = "Static"
+)]
+pub async fn sitemap_xml(State(state): State<AppState>) -> Result<impl IntoResponse, ApiError> {
+    let mut res = pka_episode::all(state.db.as_ref())
+        .await
+        .context("Failed to load episodes for sitemap")?;
 
     res.sort_by_key(|a| FloatOrd(a.number()));
 
-    let mut urls = vec![
-        Url::new(
+    const STATIC_URLS: &[(&str, Option<&str>, Option<&str>, Option<&str>)] = &[
+        (
             "https://www.pkaindex.com/",
             None,
             Some("weekly"),
             Some("1.0"),
         ),
-        Url::new(
+        (
             "https://www.pkaindex.com/watch",
             None,
             Some("weekly"),
             Some("1.0"),
         ),
-        Url::new(
+        (
             "https://www.pkaindex.com/watch/latest",
             None,
             Some("weekly"),
             Some("1.0"),
         ),
-        Url::new(
+        (
             "https://www.pkaindex.com/episodes",
             None,
             Some("weekly"),
             Some("0.9"),
         ),
-        Url::new(
+        (
             "https://www.pkaindex.com/events",
             None,
             Some("weekly"),
             Some("0.9"),
         ),
-        Url::new(
+        (
             "https://www.pkaindex.com/watch/random",
             None,
             Some("weekly"),
@@ -58,23 +90,36 @@ pub async fn sitemap_xml(state: Arc<Repo>) -> Result<impl warp::Reply, Rejection
         ),
     ];
 
-    res.into_iter()
-        .map(|p| {
+    let mut urls = STATIC_URLS
+        .iter()
+        .map(|(loc, last_mod, change_freq, priority)| {
             Url::new(
-                format!("https://www.pkaindex.com/watch/{}", p.number()).as_str(),
-                None,
-                Some("weekly"),
-                Some("0.7"),
+                *loc,
+                last_mod.map(str::to_owned),
+                change_freq.map(str::to_owned),
+                priority.map(str::to_owned),
             )
         })
-        .for_each(|u| {
-            urls.push(u);
-        });
+        .collect::<Vec<_>>();
+
+    urls.extend(res.into_iter().map(|p| {
+        Url::new(
+            format!("https://www.pkaindex.com/watch/{}", p.number()),
+            None,
+            Some("weekly".to_owned()),
+            Some("0.7".to_owned()),
+        )
+    }));
 
     let sitemap = SiteMap::from_urls(urls);
+    let xml = sitemap.to_xml_string()?;
 
-    let response =
-        warp::reply::with_header(sitemap.to_xml_string()?, "content-type", "application/xml");
-
-    Ok(response)
+    Ok((
+        StatusCode::OK,
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/xml"),
+        )],
+        xml,
+    ))
 }

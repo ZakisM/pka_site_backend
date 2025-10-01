@@ -1,14 +1,18 @@
 use serde::Serialize;
-use warp::http::StatusCode;
-use warp::reply::Response;
 
-#[derive(Serialize)]
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::Json;
+use utoipa::ToSchema;
+
+#[derive(Serialize, ToSchema)]
+#[schema(bound = "T: utoipa::ToSchema + serde::Serialize + std::marker::Send")]
 pub struct SuccessResponse<T>
 where
     T: serde::Serialize + std::marker::Send,
 {
-    code: u16,
-    data: T,
+    pub code: u16,
+    pub data: T,
 }
 
 impl<T> SuccessResponse<T>
@@ -23,12 +27,11 @@ where
     }
 }
 
-impl<T> warp::Reply for SuccessResponse<T>
+impl<T> IntoResponse for SuccessResponse<T>
 where
     T: serde::Serialize + std::marker::Send,
 {
     fn into_response(self) -> Response {
-        let json = warp::reply::json(&self);
-        warp::reply::with_status(json, StatusCode::OK).into_response()
+        (StatusCode::OK, Json(self)).into_response()
     }
 }

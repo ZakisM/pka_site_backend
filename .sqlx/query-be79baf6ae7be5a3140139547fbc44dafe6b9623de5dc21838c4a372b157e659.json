@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO pka_event (event_id, episode_number, timestamp, description, length_seconds, upload_date)\n           VALUES (?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "be79baf6ae7be5a3140139547fbc44dafe6b9623de5dc21838c4a372b157e659"
+}

@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO pka_episode (number, name, youtube_link, upload_date)\n           VALUES (?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "1583109ffb86da059fcb1518894020456db88900f1f93cad9d6b416bf4654a6c"
+}

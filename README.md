@@ -9,8 +9,10 @@ To run locally:
 #### To develop/test
 
 1. Download rust: https://rustup.rs/.
-2. (Optional) Install Diesel CLI for making changes to DB (You will need to install sqlite3 even if you skip this
-   step): https://github.com/diesel-rs/diesel/tree/master/diesel_cli
+2. (Optional) Install `sqlx-cli` for running migrations and refreshing query metadata (You will need
+   `sqlite3` even if you skip this step): https://github.com/launchbadge/sqlx/tree/main/sqlx-cli
+   - After altering SQL or migrations run `cargo sqlx prepare -- --bin pka_site_backend` so the
+     checked-in `.sqlx/` data stays in sync.
 3. Download and install `redis`. Make sure `redis-server` is running on its default port `6379`.
 4. Modify your hosts file and add the following entries if they aren't there already:
     - 127.0.0.1 redis
@@ -33,6 +35,7 @@ To run locally:
     - To run in debug mode: run `cargo run` from project root.
     - To run in release (optimized) mode: run `cargo run --release` from project root.
 14. Rust should now be serving an API from http://0.0.0.0:1234.
+    - OpenAPI schema is available at http://0.0.0.0:1234/openapi.json.
 15. Visit https://pkaindextest.com in your browser. (Firefox will work but for Chrome you will need to import the Self
     Signed SSL certificate manually.)
 
@@ -45,4 +48,3 @@ To run locally:
 ### Alternative way to test backend and frontend with docker:
 
 1. `docker-compose up -d`
-

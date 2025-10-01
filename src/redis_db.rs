@@ -1,90 +1,75 @@
-use std::ops::DerefMut;
-
-use bb8_redis::bb8::Pool;
-use bb8_redis::{bb8, redis::AsyncCommands, RedisConnectionManager};
-use redis::RedisError;
-
-use crate::models::errors::ApiError;
+use anyhow::{ensure, Context};
+use bb8_redis::bb8::{self, Pool, PooledConnection};
+use bb8_redis::redis::AsyncCommands;
+use bb8_redis::RedisConnectionManager;
+use tokio::time::{self, Duration};
 
 pub struct RedisDb {
     connection_pool: Pool<RedisConnectionManager>,
 }
 
 impl RedisDb {
-    pub async fn new(redis_url: &str) -> crate::Result<Self> {
-        Self::test_connection(redis_url)?;
+    const CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
 
+    pub async fn new(redis_url: &str) -> crate::Result<Self> {
         let manager = RedisConnectionManager::new(redis_url)
-            .expect("Failed to create redis connection manager.");
+            .context("Failed to create redis connection manager")?;
 
         let pool = bb8::Pool::builder()
             .build(manager)
             .await
-            .expect("Failed to build redis pool.");
+            .context("Failed to build redis pool")?;
+
+        // Verify we can obtain a connection up-front to fail fast on misconfiguration.
+        Self::acquire_connection(&pool)
+            .await
+            .context("Failed to acquire initial redis connection")?;
 
         Ok(RedisDb {
             connection_pool: pool,
         })
     }
 
-    fn test_connection(redis_url: &str) -> Result<(), RedisError> {
-        let _ = redis::Client::open(redis_url)?.get_connection()?;
-        Ok(())
+    pub async fn get(&self, redis_tag: String, key: String) -> anyhow::Result<Vec<u8>> {
+        let mut conn = Self::acquire_connection(&self.connection_pool).await?;
+
+        let key = format!("{}-{}", redis_tag, key);
+
+        let value: Vec<u8> = conn
+            .get(&key)
+            .await
+            .context("Failed to fetch redis value")?;
+
+        ensure!(!value.is_empty(), "Redis returned empty vector");
+
+        Ok(value)
     }
 
-    pub async fn get(&self, redis_tag: String, key: String) -> Result<Vec<u8>, ApiError> {
-        let pool = self.connection_pool.clone();
-
-        tokio::spawn(async move {
-            let mut conn = pool
-                .get()
-                .await
-                .expect("Failed to get connection from pool.");
-
-            let conn = conn.deref_mut();
-
-            let key = format!("{}-{}", redis_tag, key);
-
-            let value: Vec<u8> = conn.get(&key).await?;
-
-            if value.is_empty() {
-                Err(ApiError::new_internal_error(
-                    "Redis will not return empty vector.",
-                ))
-            } else {
-                Ok(value)
-            }
-        })
-        .await
-        .expect("Failed to run redis get task.")
-    }
-
-    pub async fn set(&self, redis_tag: String, key: String, value: &[u8]) -> Result<(), ApiError> {
-        if value.is_empty() {
-            return Err(ApiError::new_internal_error(
-                "Redis will not cache empty vector.",
-            ));
-        }
+    pub async fn set(&self, redis_tag: String, key: String, value: &[u8]) -> anyhow::Result<()> {
+        ensure!(!value.is_empty(), "Redis will not cache empty vector");
 
         let value = value.to_vec();
 
-        let pool = self.connection_pool.clone();
+        let mut conn = Self::acquire_connection(&self.connection_pool).await?;
 
-        tokio::spawn(async move {
-            let mut conn = pool
-                .get()
-                .await
-                .expect("Failed to get connection from pool.");
+        let key = format!("{}-{}", redis_tag, key);
 
-            let conn = conn.deref_mut();
+        conn.set_ex::<_, _, ()>(key, value, 30)
+            .await
+            .context("Failed to cache redis value")?;
 
-            let key = format!("{}-{}", redis_tag, key);
+        Ok(())
+    }
 
-            conn.set_ex::<_, _, ()>(key, value, 30).await?;
+    async fn acquire_connection(
+        pool: &Pool<RedisConnectionManager>,
+    ) -> anyhow::Result<PooledConnection<'_, RedisConnectionManager>> {
+        let get_connection = pool.get();
 
-            Ok(())
-        })
-        .await
-        .expect("Failed to run redis set task.")
+        let connection = time::timeout(Self::CONNECTION_TIMEOUT, get_connection)
+            .await
+            .context("Failed to get redis connection")??;
+
+        Ok(connection)
     }
 }
