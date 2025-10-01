@@ -8,7 +8,6 @@ use reqwest::ClientBuilder;
 use strum_macros::Display;
 
 use crate::models::errors::ApiError;
-use crate::Result;
 use crate::YT_API_KEY;
 
 use self::models::playlist_items::PlaylistItemsResponse;
@@ -27,7 +26,7 @@ enum Part {
 }
 
 impl YoutubeApi {
-    pub fn new() -> Result<Self> {
+    pub fn new() -> anyhow::Result<Self> {
         let client = ClientBuilder::new()
             .connect_timeout(Duration::from_secs(10))
             .timeout(Duration::from_secs(10))
@@ -41,7 +40,7 @@ impl YoutubeApi {
         &self,
         max_results: usize,
         playlist_id: &str,
-    ) -> Result<PlaylistItemsResponse> {
+    ) -> anyhow::Result<PlaylistItemsResponse> {
         let parts = [Part::Snippet];
 
         let part = parts
@@ -66,7 +65,7 @@ impl YoutubeApi {
         Ok(data)
     }
 
-    pub async fn get_video_details(&self, video_id: &str) -> Result<VideosItem> {
+    pub async fn get_video_details(&self, video_id: &str) -> anyhow::Result<VideosItem> {
         let parts = [Part::ContentDetails, Part::Snippet];
 
         let part = parts

@@ -11,7 +11,6 @@ use tracing::info;
 use tracing_subscriber::prelude::*;
 
 use crate::config::Config;
-use crate::models::errors::ApiError;
 use crate::models::pka_event::PkaEvent;
 use crate::routes::build_router;
 use crate::yt_api_key::YtApiKey;
@@ -32,7 +31,6 @@ mod updater;
 mod workers;
 mod yt_api_key;
 
-type Result<T> = std::result::Result<T, ApiError>;
 type Repo = SqlitePool;
 type EventIndexType = Arc<RwLock<Box<[PkaEvent]>>>;
 
@@ -45,10 +43,14 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
 async fn main() {
-    let _ = run().await;
+    if let Err(err) = run().await {
+        eprintln!("{err:?}");
+
+        std::process::exit(1);
+    }
 }
 
-async fn run() -> Result<()> {
+async fn run() -> anyhow::Result<()> {
     dotenv().ok();
 
     init_tracing();

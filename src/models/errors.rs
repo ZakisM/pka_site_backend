@@ -95,7 +95,6 @@ impl From<sqlx::Error> for ApiError {
 
 impl From<AnyhowError> for ApiError {
     fn from(err: AnyhowError) -> Self {
-        error!("{err}");
         ApiError::new_internal_error(err.to_string())
     }
 }

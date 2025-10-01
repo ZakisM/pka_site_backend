@@ -11,7 +11,7 @@ pub struct RedisDb {
 impl RedisDb {
     const CONNECTION_TIMEOUT: Duration = Duration::from_secs(5);
 
-    pub async fn new(redis_url: &str) -> crate::Result<Self> {
+    pub async fn new(redis_url: &str) -> anyhow::Result<Self> {
         let manager = RedisConnectionManager::new(redis_url)
             .context("Failed to create redis connection manager")?;
 
@@ -68,7 +68,12 @@ impl RedisDb {
 
         let connection = time::timeout(Self::CONNECTION_TIMEOUT, get_connection)
             .await
-            .context("Failed to get redis connection")??;
+            .with_context(|| {
+                format!(
+                    "Failed to get redis connection after {} seconds",
+                    Self::CONNECTION_TIMEOUT.as_secs()
+                )
+            })??;
 
         Ok(connection)
     }

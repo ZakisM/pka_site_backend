@@ -10,14 +10,14 @@ use crate::config::Config;
 use crate::redis_db::RedisDb;
 use crate::workers::events::update_events;
 use crate::workers::new_episode::latest_episode;
-use crate::{db, Repo, Result, PKA_EVENTS_INDEX, YT_API_KEY};
+use crate::{db, Repo, PKA_EVENTS_INDEX, YT_API_KEY};
 
 pub struct InitializedApp {
     pub app_state: AppState,
     pub cors: CorsLayer,
 }
 
-pub async fn initialize(config: &Config) -> Result<InitializedApp> {
+pub async fn initialize(config: &Config) -> anyhow::Result<InitializedApp> {
     let redis_client: Arc<RedisDb> = Arc::new(RedisDb::new(&config.redis_url).await?);
 
     let db_pool: Arc<Repo> = Arc::new(db::create_pool(&config.database_url).await?);

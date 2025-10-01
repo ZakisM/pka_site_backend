@@ -1,22 +1,21 @@
 use std::sync::LazyLock;
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use chrono::{NaiveTime, Timelike};
 use compact_str::{CompactString, ToCompactString};
 use regex::Regex;
 use tracing::{error, info, warn};
 
 use crate::conduit::sqlite::{pka_episode, pka_event, pka_youtube_details};
-use crate::models::errors::ApiError;
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
 use crate::updater::youtube_api::YoutubeApi;
-use crate::{Repo, Result};
+use crate::Repo;
 
 const WOODY_YOUTUBE_UPLOAD_PLAYLIST_ID: &str = "UUIPVJoHb_A5S3kcv3TJlyEg";
 
-pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
+pub async fn get_latest_pka_episode_data(state: &Repo) -> anyhow::Result<()> {
     info!("Checking playlist for missing episodes.");
 
     // Extract data from youtube_link
@@ -27,7 +26,7 @@ pub async fn get_latest_pka_episode_data(state: &Repo) -> Result<()> {
         .await?;
 
     if uploads.items.is_empty() {
-        return Err(ApiError::new_internal_error("No playlist items found."));
+        bail!("No playlist items found.");
     }
 
     // Sort uploads by publish date
@@ -116,7 +115,7 @@ pub fn extract_pka_episode_events(
     data: &str,
     ep_length_seconds: &i32,
     upload_date: &i64,
-) -> Result<Vec<PkaEvent>> {
+) -> anyhow::Result<Vec<PkaEvent>> {
     let mut events_without_duration: Vec<(CompactString, f32, i32, CompactString)> = Vec::new();
 
     for result in TIMELINE_REGEX.captures_iter(data) {
@@ -138,7 +137,7 @@ pub fn extract_pka_episode_events(
     }
 
     if events_without_duration.is_empty() {
-        return Err(ApiError::new_internal_error("Could not find any events"));
+        bail!("Could not find any events");
     }
 
     //sort events by timestamp
@@ -169,7 +168,7 @@ pub fn extract_pka_episode_events(
     Ok(events)
 }
 
-fn normalize_timestamp(raw: &str) -> Result<i32> {
+fn normalize_timestamp(raw: &str) -> anyhow::Result<i32> {
     let mut time_fragment = raw.replace(';', ":").trim_end_matches(':').to_owned();
 
     match time_fragment.matches(':').count() {
@@ -184,7 +183,7 @@ fn normalize_timestamp(raw: &str) -> Result<i32> {
                 time_fragment = format!("0{time_fragment}");
             }
         }
-        _ => return Err(ApiError::new_internal_error("Unknown timestamp found")),
+        _ => bail!("Unknown timestamp found"),
     }
 
     let seconds = NaiveTime::parse_from_str(&time_fragment, "%H:%M:%S")
