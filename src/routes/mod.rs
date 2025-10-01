@@ -1,3 +1,4 @@
+mod docs;
 mod episodes;
 mod events;
 mod search;
@@ -18,6 +19,7 @@ pub fn build_router() -> Router<AppState> {
 
     Router::new()
         .nest("/api/v1", api)
+        .merge(docs::router())
         .merge(static_assets::router())
         .fallback(any(not_found))
 }

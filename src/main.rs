@@ -1,26 +1,16 @@
-use std::env;
 use std::sync::Arc;
 
-use axum::http::{header, Method};
-use axum::routing::get;
-use axum::{Json, Router};
 use dotenv::dotenv;
 use mimalloc::MiMalloc;
 use sqlx::SqlitePool;
 use std::sync::LazyLock;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
-use tower_http::cors::{AllowOrigin, CorsLayer};
 use tracing_subscriber::prelude::*;
 
-use crate::app_state::AppState;
-use crate::conduit::sqlite::pka_event;
 use crate::models::errors::ApiError;
 use crate::models::pka_event::PkaEvent;
-use crate::redis_db::RedisDb;
 use crate::routes::build_router;
-use crate::workers::events::update_events;
-use crate::workers::new_episode::latest_episode;
 
 mod app_state;
 mod conduit;
@@ -32,6 +22,7 @@ mod models;
 mod redis_db;
 mod routes;
 mod search;
+mod startup;
 mod updater;
 mod workers;
 
@@ -51,6 +42,22 @@ static GLOBAL: MiMalloc = MiMalloc;
 async fn main() {
     dotenv().ok();
 
+    init_tracing();
+
+    let startup::InitializedApp { app_state, cors } = startup::initialize()
+        .await
+        .expect("Failed to initialize application state");
+
+    let app = build_router().with_state(app_state).layer(cors);
+
+    let listener = TcpListener::bind("0.0.0.0:1234")
+        .await
+        .expect("Failed to bind listener");
+
+    axum::serve(listener, app).await.expect("server error");
+}
+
+fn init_tracing() {
     let fmt_layer = tracing_subscriber::fmt::layer();
 
     let filter_layer = tracing_subscriber::EnvFilter::try_from_default_env()
@@ -61,56 +68,4 @@ async fn main() {
         .with(filter_layer)
         .with(fmt_layer)
         .init();
-
-    let redis_client: Arc<RedisDb> = Arc::new(
-        RedisDb::new("redis://redis:6379")
-            .await
-            .expect("Failed to connect to redis."),
-    );
-
-    let db_pool: Arc<Repo> = Arc::new(
-        db::create_pool(&env::var("DATABASE_URL").expect("'DATABASE_URL' is not set"))
-            .await
-            .expect("Failed to create SQLite pool"),
-    );
-
-    {
-        *YT_API_KEY.write().await = env::var("YT_API_KEY").expect("'YT_API_KEY' is not set.");
-
-        let all_events = pka_event::all(db_pool.as_ref())
-            .await
-            .expect("Failed to add all PKA events");
-
-        *PKA_EVENTS_INDEX.write().await = all_events.into_boxed_slice();
-    }
-
-    let worker_state = || db_pool.clone();
-
-    tokio::task::spawn(latest_episode(worker_state()));
-    tokio::task::spawn(update_events(worker_state()));
-
-    let app_state = AppState::new(db_pool.clone(), redis_client.clone());
-    let openapi = Arc::new(docs::openapi());
-    let docs_router = Router::new().route("/openapi.json", {
-        let openapi = openapi.clone();
-
-        get(move || async { Json(openapi) })
-    });
-
-    let cors = CorsLayer::new()
-        .allow_methods([Method::GET, Method::POST])
-        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
-        .allow_origin(AllowOrigin::predicate(|_, _| true))
-        .allow_credentials(true);
-
-    let app = build_router()
-        .merge(docs_router)
-        .with_state(app_state)
-        .layer(cors);
-
-    let listener = TcpListener::bind("0.0.0.0:1234")
-        .await
-        .expect("Failed to bind listener");
-
-    axum::serve(listener, app).await.expect("server error");
 }
