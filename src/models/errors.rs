@@ -7,6 +7,8 @@ use thiserror::Error;
 use tracing::error;
 use utoipa::ToSchema;
 
+use anyhow::Error as AnyhowError;
+
 #[derive(Debug, Error)]
 pub enum ApiError {
     #[error("{message}")]
@@ -88,6 +90,13 @@ impl From<sqlx::Error> for ApiError {
             }
             _ => ApiError::new(err.to_string(), StatusCode::INTERNAL_SERVER_ERROR),
         }
+    }
+}
+
+impl From<AnyhowError> for ApiError {
+    fn from(err: AnyhowError) -> Self {
+        error!("{err}");
+        ApiError::new_internal_error(err.to_string())
     }
 }
 

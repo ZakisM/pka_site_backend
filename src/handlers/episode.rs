@@ -1,6 +1,7 @@
 use axum::extract::State;
 use axum::http::StatusCode;
 
+use anyhow::Context;
 use compact_str::CompactString;
 
 use crate::app_state::AppState;
@@ -81,7 +82,7 @@ pub async fn latest_pka_episode(
 ) -> Result<SuccessResponse<PkaEpisodeWithAll>, ApiError> {
     let latest_episode_number = pka_episode::latest(state.db.as_ref())
         .await
-        .map_err(|_| ApiError::new_internal_error("Couldn't get latest episode number."))?;
+        .context("Couldn't get latest episode number.")?;
 
     let res = pka_episode::find_with_all(state.db.as_ref(), latest_episode_number).await?;
 
@@ -106,7 +107,7 @@ pub async fn random_pka_episode(
 ) -> Result<SuccessResponse<PkaEpisodeWithAll>, ApiError> {
     let random_episode_number = pka_episode::random(state.db.as_ref())
         .await
-        .map_err(|_| ApiError::new_internal_error("Couldn't get random episode number."))?;
+        .context("Couldn't get random episode number.")?;
 
     let res = pka_episode::find_with_all(state.db.as_ref(), random_episode_number).await?;
 

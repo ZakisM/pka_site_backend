@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use tokio::time;
-use tokio::time::Duration;
+use tokio::time::{self, Duration};
 use tracing::{error, info};
 
 use crate::conduit::sqlite::pka_event;
@@ -9,7 +8,11 @@ use crate::Repo;
 use crate::PKA_EVENTS_INDEX;
 
 pub async fn update_events(state: Arc<Repo>) {
+    let mut ticker = time::interval(Duration::from_secs(60));
+
     loop {
+        ticker.tick().await;
+
         info!("Updating all events...");
 
         match pka_event::all(&state).await {
@@ -18,8 +21,5 @@ pub async fn update_events(state: Arc<Repo>) {
             }
             Err(e) => error!("get_latest_worker error: {}", e),
         }
-
-        //Update every minute.
-        time::sleep(Duration::from_secs(60)).await;
     }
 }

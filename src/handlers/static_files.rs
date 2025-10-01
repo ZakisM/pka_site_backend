@@ -1,5 +1,6 @@
 use float_ord::FloatOrd;
 
+use anyhow::Context;
 use axum::extract::State;
 use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::IntoResponse;
@@ -44,42 +45,44 @@ pub async fn robots_txt() -> impl IntoResponse {
     tag = "Static"
 )]
 pub async fn sitemap_xml(State(state): State<AppState>) -> Result<impl IntoResponse, ApiError> {
-    let mut res = pka_episode::all(state.db.as_ref()).await?;
+    let mut res = pka_episode::all(state.db.as_ref())
+        .await
+        .context("Failed to load episodes for sitemap")?;
 
     res.sort_by_key(|a| FloatOrd(a.number()));
 
-    let mut urls = vec![
-        Url::new(
+    const STATIC_URLS: &[(&str, Option<&str>, Option<&str>, Option<&str>)] = &[
+        (
             "https://www.pkaindex.com/",
             None,
             Some("weekly"),
             Some("1.0"),
         ),
-        Url::new(
+        (
             "https://www.pkaindex.com/watch",
             None,
             Some("weekly"),
             Some("1.0"),
         ),
-        Url::new(
+        (
             "https://www.pkaindex.com/watch/latest",
             None,
             Some("weekly"),
             Some("1.0"),
         ),
-        Url::new(
+        (
             "https://www.pkaindex.com/episodes",
             None,
             Some("weekly"),
             Some("0.9"),
         ),
-        Url::new(
+        (
             "https://www.pkaindex.com/events",
             None,
             Some("weekly"),
             Some("0.9"),
         ),
-        Url::new(
+        (
             "https://www.pkaindex.com/watch/random",
             None,
             Some("weekly"),
@@ -87,18 +90,26 @@ pub async fn sitemap_xml(State(state): State<AppState>) -> Result<impl IntoRespo
         ),
     ];
 
-    res.into_iter()
-        .map(|p| {
+    let mut urls = STATIC_URLS
+        .iter()
+        .map(|(loc, last_mod, change_freq, priority)| {
             Url::new(
-                format!("https://www.pkaindex.com/watch/{}", p.number()).as_str(),
-                None,
-                Some("weekly"),
-                Some("0.7"),
+                *loc,
+                last_mod.map(str::to_owned),
+                change_freq.map(str::to_owned),
+                priority.map(str::to_owned),
             )
         })
-        .for_each(|u| {
-            urls.push(u);
-        });
+        .collect::<Vec<_>>();
+
+    urls.extend(res.into_iter().map(|p| {
+        Url::new(
+            format!("https://www.pkaindex.com/watch/{}", p.number()),
+            None,
+            Some("weekly".to_owned()),
+            Some("0.7".to_owned()),
+        )
+    }));
 
     let sitemap = SiteMap::from_urls(urls);
     let xml = sitemap.to_xml_string()?;

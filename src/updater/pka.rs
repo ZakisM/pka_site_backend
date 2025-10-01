@@ -1,5 +1,6 @@
 use std::sync::LazyLock;
 
+use anyhow::Context;
 use chrono::{NaiveTime, Timelike};
 use compact_str::{CompactString, ToCompactString};
 use regex::Regex;
@@ -119,48 +120,17 @@ pub fn extract_pka_episode_events(
     let mut events_without_duration: Vec<(CompactString, f32, i32, CompactString)> = Vec::new();
 
     for result in TIMELINE_REGEX.captures_iter(data) {
-        let mut time_date = result
+        let time_fragment = result
             .get(1)
-            .ok_or_else(|| ApiError::new_internal_error("Failed to get time_date from regex"))?
-            .as_str()
-            .replace(';', ":")
-            .trim_end_matches(':')
-            .to_owned();
-
-        //must ensure format is 00:00:00 ie H:M:S
-        match time_date.matches(':').count() {
-            1 => {
-                // if minute doesn't have a padding 0 then must add it.
-                if UNPADDED_MINUTE_REGEX.is_match(&time_date) {
-                    time_date = format!("0{}", time_date);
-                }
-                //then add leading 00:
-                time_date = format!("00:{}", time_date);
-            }
-            2 => {
-                if UNPADDED_MINUTE_REGEX.is_match(&time_date) {
-                    time_date = format!("0{}", time_date);
-                }
-            }
-            _ => return Err(ApiError::new_internal_error("Unknown timestamp found")),
-        };
-
-        let timestamp = NaiveTime::parse_from_str(&time_date, "%H:%M:%S")
-            .map_err(|_| ApiError::new_internal_error("Failed to convert time_date to timestamp"))?
-            .num_seconds_from_midnight() as i32;
+            .map(|m| m.as_str())
+            .context("Timeline regex missing timestamp capture")?;
+        let timestamp = normalize_timestamp(time_fragment)?;
 
         let description = result
             .get(2)
-            .ok_or_else(|| ApiError::new_internal_error("Failed to get description from regex"))?
-            .as_str()
-            .trim()
-            .replace('’', "'")
-            .replace("â€™", "'")
-            .replace("â€¦", "…")
-            .replace("â€“", "–")
-            .replace("â€œ", "“")
-            .replace("â€", "”")
-            .to_compact_string();
+            .map(|m| m.as_str())
+            .context("Timeline regex missing description capture")
+            .map(clean_description)?;
 
         let event_id = format!("{:<03}-{}", ep_number, timestamp).to_compact_string();
 
@@ -178,17 +148,12 @@ pub fn extract_pka_episode_events(
         .iter()
         .enumerate()
         .map(|(index, event)| {
-            //Calculate duration of each event
-            let mut length_seconds =
-                if let Some(next_event) = events_without_duration.get(index + 1) {
-                    next_event.2 - event.2
-                } else {
-                    *ep_length_seconds - event.2
-                };
-
-            if length_seconds <= 0 {
-                length_seconds = 1;
+            let length_seconds = if let Some(next_event) = events_without_duration.get(index + 1) {
+                next_event.2 - event.2
+            } else {
+                *ep_length_seconds - event.2
             }
+            .max(1);
 
             PkaEvent::new(
                 event.0.clone(),
@@ -202,4 +167,40 @@ pub fn extract_pka_episode_events(
         .collect();
 
     Ok(events)
+}
+
+fn normalize_timestamp(raw: &str) -> Result<i32> {
+    let mut time_fragment = raw.replace(';', ":").trim_end_matches(':').to_owned();
+
+    match time_fragment.matches(':').count() {
+        1 => {
+            if UNPADDED_MINUTE_REGEX.is_match(&time_fragment) {
+                time_fragment = format!("0{time_fragment}");
+            }
+            time_fragment = format!("00:{time_fragment}");
+        }
+        2 => {
+            if UNPADDED_MINUTE_REGEX.is_match(&time_fragment) {
+                time_fragment = format!("0{time_fragment}");
+            }
+        }
+        _ => return Err(ApiError::new_internal_error("Unknown timestamp found")),
+    }
+
+    let seconds = NaiveTime::parse_from_str(&time_fragment, "%H:%M:%S")
+        .context("Failed to convert timeline fragment into timestamp")?
+        .num_seconds_from_midnight() as i32;
+
+    Ok(seconds)
+}
+
+fn clean_description(raw: &str) -> CompactString {
+    raw.trim()
+        .replace('’', "'")
+        .replace("â€™", "'")
+        .replace("â€¦", "…")
+        .replace("â€“", "–")
+        .replace("â€œ", "“")
+        .replace("â€", "”")
+        .to_compact_string()
 }

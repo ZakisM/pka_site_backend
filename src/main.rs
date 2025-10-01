@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use anyhow::Context;
 use dotenv::dotenv;
 use mimalloc::MiMalloc;
 use sqlx::SqlitePool;
@@ -42,24 +43,28 @@ static PKA_EVENTS_INDEX: LazyLock<EventIndexType> =
 static GLOBAL: MiMalloc = MiMalloc;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     dotenv().ok();
 
     init_tracing();
 
-    let config = Config::from_env().unwrap_or_else(|err| panic!("Configuration error: {err}"));
+    let config = Config::from_env().context("Failed to load configuration")?;
 
     let startup::InitializedApp { app_state, cors } = startup::initialize(&config)
         .await
-        .expect("Failed to initialize application state");
+        .context("Failed to initialize application state")?;
 
     let app = build_router().with_state(app_state).layer(cors);
 
     let listener = TcpListener::bind(&config.bind_address)
         .await
-        .expect("Failed to bind listener");
+        .context("Failed to bind listener")?;
 
-    axum::serve(listener, app).await.expect("server error");
+    axum::serve(listener, app)
+        .await
+        .context("Server error")?;
+
+    Ok(())
 }
 
 fn init_tracing() {
