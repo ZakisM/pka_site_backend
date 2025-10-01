@@ -11,6 +11,7 @@ use tracing_subscriber::prelude::*;
 use crate::models::errors::ApiError;
 use crate::models::pka_event::PkaEvent;
 use crate::routes::build_router;
+use crate::yt_api_key::YtApiKey;
 
 mod app_state;
 mod conduit;
@@ -25,13 +26,13 @@ mod search;
 mod startup;
 mod updater;
 mod workers;
+mod yt_api_key;
 
 type Result<T> = std::result::Result<T, ApiError>;
 type Repo = SqlitePool;
 type EventIndexType = Arc<RwLock<Box<[PkaEvent]>>>;
 
-static YT_API_KEY: LazyLock<Arc<RwLock<String>>> =
-    LazyLock::new(|| Arc::new(RwLock::new(String::new())));
+static YT_API_KEY: LazyLock<YtApiKey> = LazyLock::new(YtApiKey::default);
 static PKA_EVENTS_INDEX: LazyLock<EventIndexType> =
     LazyLock::new(|| Arc::new(RwLock::new(Box::default())));
 

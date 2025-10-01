@@ -29,7 +29,7 @@ pub async fn initialize() -> Result<InitializedApp> {
         let yt_key = env::var("YT_API_KEY")
             .map_err(|_| ApiError::new("'YT_API_KEY' is not set.", StatusCode::INTERNAL_SERVER_ERROR))?;
 
-        *YT_API_KEY.write().await = yt_key;
+        YT_API_KEY.set(yt_key).await;
 
         let all_events = pka_event::all(db_pool.as_ref())
             .await?;

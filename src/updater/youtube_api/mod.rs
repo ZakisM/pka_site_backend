@@ -50,12 +50,14 @@ impl YoutubeApi {
             .collect::<Vec<_>>()
             .join(",");
 
+        let api_key = YT_API_KEY.get().await;
+
         let endpoint = format!(
             "https://www.googleapis.com/youtube/v3/playlistItems?part={}&maxResults={}&playlistId={}&key={}",
             part,
             max_results,
             playlist_id,
-            *YT_API_KEY.read().await
+            api_key,
         );
 
         let res = self.client.get(&endpoint).send().await?;
@@ -73,11 +75,11 @@ impl YoutubeApi {
             .collect::<Vec<_>>()
             .join(",");
 
+        let api_key = YT_API_KEY.get().await;
+
         let endpoint = format!(
             "https://www.googleapis.com/youtube/v3/videos?part={}&id={}&key={}",
-            part,
-            video_id,
-            *YT_API_KEY.read().await
+            part, video_id, api_key,
         );
 
         let res = self.client.get(&endpoint).send().await?;
