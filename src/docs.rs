@@ -1,7 +1,5 @@
-use serde::Serialize;
 use utoipa::openapi::OpenApi;
 use utoipa::OpenApi as OpenApiTrait;
-use utoipa::ToSchema;
 
 use crate::handlers::{episode, event, search, static_files};
 use crate::models::errors::ErrorResponseBody;
@@ -10,24 +8,7 @@ use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
 use crate::models::search::{PkaEventSearchResult, SearchQuery};
-
-#[derive(Serialize, ToSchema)]
-pub struct EpisodeResponse {
-    pub code: u16,
-    pub data: PkaEpisodeWithAll,
-}
-
-#[derive(Serialize, ToSchema)]
-pub struct YoutubeLinkResponse {
-    pub code: u16,
-    pub data: String,
-}
-
-#[derive(Serialize, ToSchema)]
-pub struct EventResponse {
-    pub code: u16,
-    pub data: PkaEventSearchResult,
-}
+use crate::models::success_response::SuccessResponse;
 
 #[derive(OpenApiTrait)]
 #[openapi(
@@ -44,15 +25,13 @@ pub struct EventResponse {
         static_files::sitemap_xml
     ),
     components(schemas(
-        EpisodeResponse,
-        YoutubeLinkResponse,
-        EventResponse,
+        SuccessResponse<PkaEpisodeWithAll>,
+        SuccessResponse<String>,
+        SuccessResponse<PkaEventSearchResult>,
         ErrorResponseBody,
         PkaEpisode,
         PkaEvent,
-        PkaEpisodeWithAll,
         PkaYoutubeDetails,
-        PkaEventSearchResult,
         SearchQuery
     )),
     tags(

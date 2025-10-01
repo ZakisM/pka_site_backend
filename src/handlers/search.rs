@@ -5,7 +5,7 @@ use axum::response::{IntoResponse, Response};
 
 use crate::app_state::AppState;
 use crate::extractors::AppJson;
-use crate::models::errors::ApiError;
+use crate::models::errors::{ApiError, ErrorResponseBody};
 use crate::models::search::SearchQuery;
 use crate::search::pka_search::{search_episode, search_events};
 
@@ -20,8 +20,8 @@ use crate::search::pka_search::{search_episode, search_events};
             content_type = "application/octet-stream",
             body = String
         ),
-        (status = 400, description = "Invalid search request", body = crate::models::errors::ErrorResponseBody),
-        (status = 500, description = "Internal server error", body = crate::models::errors::ErrorResponseBody)
+        (status = 400, description = "Invalid search request", body = ErrorResponseBody),
+        (status = 500, description = "Internal server error", body = ErrorResponseBody)
     ),
     tag = "Search"
 )]
@@ -45,8 +45,8 @@ pub async fn search_pka_episode(
             content_type = "application/octet-stream",
             body = String
         ),
-        (status = 400, description = "Invalid search request", body = crate::models::errors::ErrorResponseBody),
-        (status = 500, description = "Internal server error", body = crate::models::errors::ErrorResponseBody)
+        (status = 400, description = "Invalid search request", body = ErrorResponseBody),
+        (status = 500, description = "Internal server error", body = ErrorResponseBody)
     ),
     tag = "Search"
 )]

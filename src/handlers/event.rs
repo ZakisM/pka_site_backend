@@ -2,7 +2,7 @@ use axum::extract::State;
 
 use crate::app_state::AppState;
 use crate::conduit::sqlite::pka_event;
-use crate::models::errors::ApiError;
+use crate::models::errors::{ApiError, ErrorResponseBody};
 use crate::models::search::PkaEventSearchResult;
 use crate::models::success_response::SuccessResponse;
 
@@ -10,8 +10,12 @@ use crate::models::success_response::SuccessResponse;
     get,
     path = "/api/v1/events/random",
     responses(
-        (status = 200, description = "Random event", body = crate::docs::EventResponse),
-        (status = 500, description = "Internal server error", body = crate::models::errors::ErrorResponseBody)
+        (
+            status = 200,
+            description = "Random event",
+            body = SuccessResponse<PkaEventSearchResult>
+        ),
+        (status = 500, description = "Internal server error", body = ErrorResponseBody)
     ),
     tag = "Events"
 )]
