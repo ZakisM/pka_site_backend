@@ -1561,7 +1561,6 @@ dependencies = [
  "dotenv",
  "float-ord",
  "iso8601-duration",
- "lazy_static",
  "log",
  "mimalloc",
  "pretty_env_logger",

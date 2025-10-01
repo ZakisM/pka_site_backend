@@ -1,6 +1,4 @@
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 extern crate log;
 
 use std::env;
@@ -12,6 +10,7 @@ use axum::{Json, Router};
 use dotenv::dotenv;
 use mimalloc::MiMalloc;
 use sqlx::SqlitePool;
+use std::sync::LazyLock;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -42,10 +41,10 @@ type Result<T> = std::result::Result<T, ApiError>;
 type Repo = SqlitePool;
 type EventIndexType = Arc<RwLock<Box<[PkaEvent]>>>;
 
-lazy_static! {
-    static ref YT_API_KEY: Arc<RwLock<String>> = Arc::new(RwLock::new(String::new()));
-    static ref PKA_EVENTS_INDEX: EventIndexType = Arc::new(RwLock::new(Box::default()));
-}
+static YT_API_KEY: LazyLock<Arc<RwLock<String>>> =
+    LazyLock::new(|| Arc::new(RwLock::new(String::new())));
+static PKA_EVENTS_INDEX: LazyLock<EventIndexType> =
+    LazyLock::new(|| Arc::new(RwLock::new(Box::default())));
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
