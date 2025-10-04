@@ -11,6 +11,7 @@ To run locally:
 1. Download rust: https://rustup.rs/.
 2. (Optional) Install `sqlx-cli` for running migrations and refreshing query metadata (You will need
    `sqlite3` even if you skip this step): https://github.com/launchbadge/sqlx/tree/main/sqlx-cli
+   - Apply migrations (uses `DATABASE_URL` from `.env`): `sqlx migrate run`
    - After altering SQL or migrations run `cargo sqlx prepare -- --bin pka_site_backend` so the
      checked-in `.sqlx/` data stays in sync.
 3. Download and install `redis`. Make sure `redis-server` is running on its default port `6379`.
