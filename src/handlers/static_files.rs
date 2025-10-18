@@ -51,7 +51,9 @@ pub async fn sitemap_xml(State(state): State<AppState>) -> Result<impl IntoRespo
 
     res.sort_by_key(|a| FloatOrd(a.number()));
 
-    const STATIC_URLS: &[(&str, Option<&str>, Option<&str>, Option<&str>)] = &[
+    type Type<'a> = &'a [(&'a str, Option<&'a str>, Option<&'a str>, Option<&'a str>)];
+
+    const STATIC_URLS: Type = &[
         (
             "https://www.pkaindex.com/",
             None,
