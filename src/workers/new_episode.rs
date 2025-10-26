@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::time::{self, Duration};
 use tracing::{error, info};
 
-use crate::updater::pka::get_latest_pka_episode_data;
+use crate::updater::pka::load_new_episodes;
 use crate::Repo;
 
 pub async fn latest_episode(state: Arc<Repo>) {
@@ -12,9 +12,7 @@ pub async fn latest_episode(state: Arc<Repo>) {
     loop {
         ticker.tick().await;
 
-        info!("Checking for latest episode...");
-
-        if let Err(e) = get_latest_pka_episode_data(&state).await {
+        if let Err(e) = load_new_episodes(&state).await {
             error!("get_latest_worker error: {}", e);
         } else {
             info!("Successfully finished looking for latest episodes.");
