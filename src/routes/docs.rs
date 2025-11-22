@@ -1,15 +1,11 @@
-use std::sync::Arc;
-
-use axum::routing::get;
-use axum::{Json, Router};
+use axum::Router;
+use utoipa_swagger_ui::SwaggerUi;
 
 use crate::app_state::AppState;
 use crate::docs;
 
 pub fn router() -> Router<AppState> {
-    let openapi = Arc::new(docs::openapi());
+    let openapi = docs::openapi();
 
-    Router::new().route("/openapi.json", {
-        get(move || async move { Json(openapi) })
-    })
+    Router::new().merge(SwaggerUi::new("/swagger-ui").url("/openapi.json", openapi))
 }

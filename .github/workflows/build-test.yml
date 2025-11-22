@@ -8,6 +8,8 @@ on:
       - 'pka_db.sqlite3'
       - '.github/**'
     branches: [ master ]
+  push:
+    branches: [ master ]
 
 jobs:
   build:
@@ -16,9 +18,26 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
       - name: Download Sqlite3
         run: sudo apt-get install libsqlite3-dev
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      - name: Lint with Clippy
+        run: cargo clippy -- -D warnings
+
       - name: Build
         run: cargo build
+
       - name: Run tests
         run: cargo test --verbose
