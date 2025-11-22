@@ -20,12 +20,11 @@ COPY /src ./src
 RUN mkdir -p data
 RUN cargo build --release
 
-FROM gcr.io/distroless/cc-debian12:nonroot
+FROM gcr.io/distroless/cc-debian12
 WORKDIR /app
-COPY --from=builder --chown=nonroot:nonroot /app/target/release/pka_site_backend .
-COPY --from=builder --chown=nonroot:nonroot /app/data ./data
-COPY --from=builder --chown=nonroot:nonroot /app/migrations ./migrations
+COPY --from=builder /app/target/release/pka_site_backend .
+COPY --from=builder /app/data ./data
+COPY --from=builder /app/migrations ./migrations
 ENV DATABASE_URL=sqlite://./pka_index_data/pka_db.sqlite3
-USER nonroot
 ENTRYPOINT ["/app/pka_site_backend"]
 
