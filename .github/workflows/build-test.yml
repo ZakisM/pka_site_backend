@@ -8,8 +8,6 @@ on:
       - 'pka_db.sqlite3'
       - '.github/**'
     branches: [ master ]
-  push:
-    branches: [ master ]
 
 jobs:
   build:
