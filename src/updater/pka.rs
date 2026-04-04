@@ -17,7 +17,7 @@ use crate::Repo;
 const WOODY_YOUTUBE_UPLOAD_PLAYLIST_ID: &str = "UUIPVJoHb_A5S3kcv3TJlyEg";
 
 static TITLE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    RegexBuilder::new(r"PKA (?P<number>\d{3,})")
+    RegexBuilder::new(r"PKA\s*(?P<number>\d{3,})")
         .case_insensitive(true)
         .build()
         .expect("Failed to create TITLE_REGEX")
@@ -62,10 +62,11 @@ pub async fn load_new_episodes(state: &Repo) -> anyhow::Result<()> {
             let episode_name = format!("PKA {}", episode_number).to_compact_string();
 
             match missing_uploads.iter().find(|ep| {
-                ep.snippet
-                    .title
-                    .to_lowercase()
-                    .contains(episode_name.to_lowercase().as_str())
+                TITLE_REGEX
+                    .captures(&ep.snippet.title)
+                    .and_then(|c| c.name("number"))
+                    .and_then(|n| n.as_str().parse::<usize>().ok())
+                    .is_some_and(|n| n == episode_number)
             }) {
                 Some(matching_episode) => {
                     info!("Found {episode_name} in playlist. Attempting to extract video details.");

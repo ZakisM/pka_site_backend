@@ -20,7 +20,7 @@ COPY /src ./src
 RUN mkdir -p data
 RUN cargo build --release
 
-FROM gcr.io/distroless/cc-debian12
+FROM gcr.io/distroless/cc-debian13
 WORKDIR /app
 COPY --from=builder /app/target/release/pka_site_backend .
 COPY --from=builder /app/data ./data
