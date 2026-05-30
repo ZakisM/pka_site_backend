@@ -1,7 +1,6 @@
 use std::sync::LazyLock;
 
 use anyhow::{bail, Context};
-use chrono::{NaiveTime, Timelike};
 use compact_str::{CompactString, ToCompactString};
 use regex::{Regex, RegexBuilder};
 use tracing::{error, info, warn};
@@ -148,9 +147,6 @@ static TIMELINE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         .expect("Failed to create TIMELINE_REGEX")
 });
 
-static UNPADDED_MINUTE_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r#"^(\d)(?::)"#).expect("Failed to create UNPADDED_MINUTE_REGEX"));
-
 pub fn extract_pka_episode_events(
     ep_number: f32,
     data: &str,
@@ -210,26 +206,33 @@ pub fn extract_pka_episode_events(
 }
 
 fn normalize_timestamp(raw: &str) -> anyhow::Result<i32> {
-    let mut time_fragment = raw.replace(';', ":").trim_end_matches(':').to_owned();
+    let time_fragment = raw.replace(';', ":").trim_end_matches(':').to_owned();
 
-    match time_fragment.matches(':').count() {
+    let parts: Vec<&str> = time_fragment.split(':').collect();
+
+    let seconds = match parts.len() {
         1 => {
-            if UNPADDED_MINUTE_REGEX.is_match(&time_fragment) {
-                time_fragment = format!("0{time_fragment}");
-            }
-            time_fragment = format!("00:{time_fragment}");
+            parts[0].parse::<i32>()
+                .with_context(|| format!("Failed to parse seconds from '{time_fragment}' (derived from '{raw}')"))?
         }
         2 => {
-            if UNPADDED_MINUTE_REGEX.is_match(&time_fragment) {
-                time_fragment = format!("0{time_fragment}");
-            }
+            let minutes = parts[0].parse::<i32>()
+                .with_context(|| format!("Failed to parse minutes from '{time_fragment}' (derived from '{raw}')"))?;
+            let seconds = parts[1].parse::<i32>()
+                .with_context(|| format!("Failed to parse seconds from '{time_fragment}' (derived from '{raw}')"))?;
+            minutes * 60 + seconds
         }
-        _ => bail!("Unknown timestamp found"),
-    }
-
-    let seconds = NaiveTime::parse_from_str(&time_fragment, "%H:%M:%S")
-        .with_context(|| format!("Failed to convert timeline fragment '{time_fragment}' (derived from '{raw}') into timestamp"))?
-        .num_seconds_from_midnight() as i32;
+        3 => {
+            let hours = parts[0].parse::<i32>()
+                .with_context(|| format!("Failed to parse hours from '{time_fragment}' (derived from '{raw}')"))?;
+            let minutes = parts[1].parse::<i32>()
+                .with_context(|| format!("Failed to parse minutes from '{time_fragment}' (derived from '{raw}')"))?;
+            let seconds = parts[2].parse::<i32>()
+                .with_context(|| format!("Failed to parse seconds from '{time_fragment}' (derived from '{raw}')"))?;
+            hours * 3600 + minutes * 60 + seconds
+        }
+        _ => bail!("Unknown timestamp format: '{time_fragment}' (derived from '{raw}')"),
+    };
 
     Ok(seconds)
 }
@@ -243,4 +246,38 @@ fn clean_description(raw: &str) -> CompactString {
         .replace("â€œ", "“")
         .replace("â€", "”")
         .to_compact_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_timestamp() {
+        // Standard formats
+        assert_eq!(normalize_timestamp("12:34").unwrap(), 754);
+        assert_eq!(normalize_timestamp("2:34").unwrap(), 154);
+        assert_eq!(normalize_timestamp("1:02:03").unwrap(), 3723);
+
+        // Out-of-range bounds
+        assert_eq!(normalize_timestamp("2:36:66").unwrap(), 9426); // Out-of-range seconds!
+        assert_eq!(normalize_timestamp("02:36:66").unwrap(), 9426);
+        assert_eq!(normalize_timestamp("2:80:05").unwrap(), 12005); // Out-of-range minutes!
+
+        // Alternative separators (semicolons instead of colons)
+        assert_eq!(normalize_timestamp("12;34").unwrap(), 754);
+        assert_eq!(normalize_timestamp("1;02;03").unwrap(), 3723);
+
+        // Trailing separator trimming
+        assert_eq!(normalize_timestamp("12:34:").unwrap(), 754);
+        assert_eq!(normalize_timestamp("1:02:03:").unwrap(), 3723);
+
+        // Single part (seconds only)
+        assert_eq!(normalize_timestamp("45").unwrap(), 45);
+
+        // Error cases
+        assert!(normalize_timestamp("12:34:56:78").is_err()); // Too many parts
+        assert!(normalize_timestamp("abc").is_err()); // Non-digit characters
+        assert!(normalize_timestamp("12:ab").is_err()); // Non-digit parts
+    }
 }
