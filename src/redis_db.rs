@@ -38,7 +38,7 @@ impl RedisDb {
         let value: Vec<u8> = conn
             .get(&key)
             .await
-            .context("Failed to fetch redis value")?;
+            .with_context(|| format!("Failed to fetch redis value for key '{key}'"))?;
 
         ensure!(!value.is_empty(), "Redis returned empty vector");
 
@@ -54,9 +54,9 @@ impl RedisDb {
 
         let key = format!("{}-{}", redis_tag, key);
 
-        conn.set_ex::<_, _, ()>(key, value, 30)
+        conn.set_ex::<_, _, ()>(key.clone(), value, 30)
             .await
-            .context("Failed to cache redis value")?;
+            .with_context(|| format!("Failed to cache redis value for key '{key}'"))?;
 
         Ok(())
     }

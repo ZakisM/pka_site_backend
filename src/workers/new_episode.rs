@@ -13,7 +13,7 @@ pub async fn latest_episode(state: Arc<Repo>) {
         ticker.tick().await;
 
         if let Err(e) = load_new_episodes(&state).await {
-            error!("get_latest_worker error: {}", e);
+            error!("get_latest_worker error: {:#}", e);
         } else {
             info!("Successfully finished looking for latest episodes.");
         }

@@ -83,7 +83,7 @@ impl IntoResponse for ApiError {
 
 impl From<sqlx::Error> for ApiError {
     fn from(err: sqlx::Error) -> Self {
-        error!("{err}");
+        error!("Database error: {err}");
         match err {
             sqlx::Error::RowNotFound => {
                 ApiError::new("Data could not be found.", StatusCode::NOT_FOUND)
@@ -95,6 +95,7 @@ impl From<sqlx::Error> for ApiError {
 
 impl From<AnyhowError> for ApiError {
     fn from(err: AnyhowError) -> Self {
+        error!("Unhandled internal anyhow error: {err:#}");
         ApiError::new_internal_error(err.to_string())
     }
 }

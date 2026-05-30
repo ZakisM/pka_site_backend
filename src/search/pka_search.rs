@@ -13,7 +13,7 @@ use crate::PKA_EVENTS_INDEX;
 pub async fn search_episode(state: &Repo, query: &str) -> anyhow::Result<Vec<u8>> {
     let all_episodes = pka_episode::all_with_yt_details(state)
         .await
-        .context("Failed to load episodes for search")?;
+        .with_context(|| format!("Failed to load episodes for search with query '{query}'"))?;
 
     let results = search(query, &all_episodes)
         .into_iter()
@@ -23,7 +23,7 @@ pub async fn search_episode(state: &Repo, query: &str) -> anyhow::Result<Vec<u8>
     let results = results
         .as_bitcode_compressed()
         .await
-        .context("Failed to compress episode search results")?;
+        .with_context(|| format!("Failed to compress episode search results for query '{query}'"))?;
 
     Ok(results)
 }
@@ -45,7 +45,7 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> anyhow::Result<Vec<u
             let results = results
                 .as_bitcode_compressed()
                 .await
-                .context("Failed to compress event search results")?;
+                .with_context(|| format!("Failed to compress event search results for query '{query}'"))?;
 
             event_cache::set(redis, redis_tag, query.to_owned(), results.as_slice()).await?;
 

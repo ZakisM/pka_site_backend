@@ -20,7 +20,7 @@ chrono = { version = "0.4", features = ["serde"] }
 float-ord = "0.3"
 reqwest = { version = "0.13", features = ["gzip"] }
 regex = "1"
-quick-xml = { version = "0.39", features = ["serialize"] }
+quick-xml = { version = "0.40.1", features = ["serialize"] }
 iso8601-duration = { version = "0.2.0", features = ["chrono"] }
 redis = "1"
 bb8-redis = "0.26.0"

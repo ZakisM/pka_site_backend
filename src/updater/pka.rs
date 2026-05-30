@@ -110,7 +110,7 @@ async fn extract_then_save_events(
 
     let pka_ep = PkaEpisode::new(
         number,
-        name,
+        name.clone(),
         playlist_item.snippet.resource_id.video_id.to_owned(),
         playlist_item.snippet.published_at,
     );
@@ -123,17 +123,19 @@ async fn extract_then_save_events(
     );
 
     if let Err(e) = pka_episode::insert(state, pka_ep).await {
-        error!("Error adding latest pka_ep: {}", e);
+        error!("Error adding latest pka_ep '{name}' (episode {number}): {e}");
     }
 
     for evt in events.into_iter() {
+        let event_id = evt.event_id();
         if let Err(e) = pka_event::insert(state, evt).await {
-            error!("Error adding latest events: {}", e);
+            error!("Error adding latest event '{event_id}' for episode {number}: {e}");
         }
     }
 
+    let yt_video_id = youtube_details.video_id.clone();
     if let Err(e) = pka_youtube_details::insert(state, youtube_details).await {
-        error!("Error adding latest youtube_details: {}", e);
+        error!("Error adding latest youtube_details for episode {number} (video ID '{yt_video_id}'): {e}");
     }
 
     info!("Extracted successfully.");
@@ -226,7 +228,7 @@ fn normalize_timestamp(raw: &str) -> anyhow::Result<i32> {
     }
 
     let seconds = NaiveTime::parse_from_str(&time_fragment, "%H:%M:%S")
-        .context("Failed to convert timeline fragment into timestamp")?
+        .with_context(|| format!("Failed to convert timeline fragment '{time_fragment}' (derived from '{raw}') into timestamp"))?
         .num_seconds_from_midnight() as i32;
 
     Ok(seconds)
