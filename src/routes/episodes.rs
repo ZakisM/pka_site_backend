@@ -5,6 +5,7 @@ use crate::handlers::episode;
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/", get(episode::all_pka_episodes))
         .route("/{number}", get(episode::watch_pka_episode))
         .route(
             "/{number}/youtube-link",

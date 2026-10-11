@@ -1,4 +1,4 @@
-use axum::extract::rejection::{JsonRejection, PathRejection};
+use axum::extract::rejection::{PathRejection, QueryRejection};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -25,8 +25,6 @@ pub enum ApiError {
     Reqwest(#[from] reqwest::Error),
     #[error(transparent)]
     Utf8(#[from] std::string::FromUtf8Error),
-    #[error(transparent)]
-    Redis(#[from] redis::RedisError),
     #[error(transparent)]
     Io(#[from] std::io::Error),
 }
@@ -100,8 +98,8 @@ impl From<AnyhowError> for ApiError {
     }
 }
 
-impl From<JsonRejection> for ApiError {
-    fn from(rejection: JsonRejection) -> Self {
+impl From<QueryRejection> for ApiError {
+    fn from(rejection: QueryRejection) -> Self {
         ApiError::new(rejection.body_text(), rejection.status())
     }
 }

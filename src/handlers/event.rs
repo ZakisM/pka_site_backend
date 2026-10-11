@@ -3,7 +3,7 @@ use axum::extract::State;
 use crate::app_state::AppState;
 use crate::conduit::sqlite::pka_event;
 use crate::models::errors::{ApiError, ErrorResponseBody};
-use crate::models::search::PkaEventSearchResult;
+use crate::models::pka_event::RandomPkaEvent;
 use crate::models::success_response::SuccessResponse;
 
 #[utoipa::path(
@@ -13,7 +13,7 @@ use crate::models::success_response::SuccessResponse;
         (
             status = 200,
             description = "Random event",
-            body = SuccessResponse<PkaEventSearchResult>
+            body = SuccessResponse<RandomPkaEvent>
         ),
         (status = 500, description = "Internal server error", body = ErrorResponseBody)
     ),
@@ -21,7 +21,7 @@ use crate::models::success_response::SuccessResponse;
 )]
 pub async fn random_pka_event(
     State(state): State<AppState>,
-) -> Result<SuccessResponse<PkaEventSearchResult>, ApiError> {
+) -> Result<SuccessResponse<RandomPkaEvent>, ApiError> {
     let random_event = pka_event::random_amount(state.db.as_ref())
         .await?
         .ok_or_else(|| ApiError::new_internal_error("Couldn't find random events."))?;

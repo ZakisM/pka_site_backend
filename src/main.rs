@@ -1,17 +1,14 @@
-use std::sync::Arc;
-
 use anyhow::Context;
 use dotenv::dotenv;
 use mimalloc::MiMalloc;
 use sqlx::SqlitePool;
 use std::sync::LazyLock;
 use tokio::net::TcpListener;
-use tokio::sync::RwLock;
+use tower_http::compression::CompressionLayer;
 use tracing::info;
 use tracing_subscriber::prelude::*;
 
 use crate::config::Config;
-use crate::models::pka_event::PkaEvent;
 use crate::routes::build_router;
 use crate::yt_api_key::YtApiKey;
 
@@ -23,7 +20,6 @@ mod docs;
 mod extractors;
 mod handlers;
 mod models;
-mod redis_db;
 mod routes;
 mod search;
 mod startup;
@@ -32,11 +28,8 @@ mod workers;
 mod yt_api_key;
 
 type Repo = SqlitePool;
-type EventIndexType = Arc<RwLock<Box<[PkaEvent]>>>;
 
 static YT_API_KEY: LazyLock<YtApiKey> = LazyLock::new(YtApiKey::default);
-static PKA_EVENTS_INDEX: LazyLock<EventIndexType> =
-    LazyLock::new(|| Arc::new(RwLock::new(Box::default())));
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -66,7 +59,11 @@ async fn run() -> anyhow::Result<()> {
         app = app.merge(routes::docs::router());
     }
 
-    let app = app.with_state(app_state).layer(cors);
+    // The episode list and broad searches are tens of kilobytes of JSON.
+    let app = app
+        .with_state(app_state)
+        .layer(cors)
+        .layer(CompressionLayer::new());
 
     let listener = TcpListener::bind(&config.bind_address)
         .await

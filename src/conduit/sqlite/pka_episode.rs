@@ -4,7 +4,7 @@ use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
-use crate::models::search::PkaEpisodeSearchResult;
+use crate::models::search::EpisodeSummary;
 use crate::Repo;
 
 pub async fn all(repo: &Repo) -> Result<Vec<PkaEpisode>, sqlx::Error> {
@@ -48,9 +48,9 @@ pub async fn random(repo: &Repo) -> Result<f32, sqlx::Error> {
 
 // Every column is NOT NULL in the schema, but SQLite's nullability inference
 // Gives up across the LEFT JOIN, hence the `!` overrides.
-pub async fn all_with_yt_details(repo: &Repo) -> Result<Vec<PkaEpisodeSearchResult>, sqlx::Error> {
+pub async fn all_summaries(repo: &Repo) -> Result<Vec<EpisodeSummary>, sqlx::Error> {
     sqlx::query_as!(
-        PkaEpisodeSearchResult,
+        EpisodeSummary,
         r#"SELECT
             e.number                   AS "episode_number!: f32",
             e.upload_date              AS "upload_date!: i64",

@@ -1,102 +1,79 @@
-use std::cmp::Ordering;
-
-use bitcode::Encode;
 use compact_str::CompactString;
-use float_ord::FloatOrd;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
-use crate::{models::pka_event::PkaEvent, search::Searchable};
+use crate::models::pka_event::PkaEvent;
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct SearchParams {
+    /// Words to find; every one must appear in a moment or episode title.
+    #[param(value_type = String)]
+    pub q: CompactString,
+    #[serde(default)]
+    pub sort: SearchSort,
+    /// Zero-based page of episode groups.
+    #[serde(default)]
+    pub page: usize,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum SearchSort {
+    /// Newest episode first.
+    #[default]
+    Newest,
+    /// Episodes with the most matching moments first, newest breaking ties.
+    Matches,
+}
+
+/// An episode as lists and search results show it.
+#[derive(Clone, Debug, Serialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct SearchQuery {
-    #[schema(value_type = String)]
-    pub query: CompactString,
-}
-
-#[derive(Clone, Encode, Debug, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct PkaEventSearchResult {
-    pub episode_number: f32,
-    pub timestamp: i32,
-    // TODO: Use Cow<'_, str> when bitcode supports
-    #[schema(value_type = String)]
-    pub description: String,
-    pub length_seconds: i32,
-    pub upload_date: i64,
-}
-
-impl<T: AsRef<PkaEvent>> From<T> for PkaEventSearchResult {
-    fn from(evt: T) -> Self {
-        let evt = evt.as_ref();
-
-        Self {
-            episode_number: evt.episode_number(),
-            timestamp: evt.timestamp(),
-            description: evt.description().to_owned(),
-            length_seconds: evt.length_seconds(),
-            upload_date: evt.upload_date(),
-        }
-    }
-}
-
-impl std::cmp::Ord for PkaEventSearchResult {
-    fn cmp(&self, other: &Self) -> Ordering {
-        FloatOrd(self.episode_number).cmp(&FloatOrd(other.episode_number))
-    }
-}
-
-impl std::cmp::PartialOrd for PkaEventSearchResult {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl std::cmp::PartialEq for PkaEventSearchResult {
-    fn eq(&self, other: &Self) -> bool {
-        FloatOrd(self.episode_number).eq(&FloatOrd(other.episode_number))
-    }
-}
-
-impl std::cmp::Eq for PkaEventSearchResult {}
-
-#[derive(Clone, Encode, Debug, Serialize, FromRow, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct PkaEpisodeSearchResult {
+pub struct EpisodeSummary {
     pub episode_number: f32,
     pub upload_date: i64,
     pub title: String,
     pub length_seconds: i32,
-    // Appended, never reordered: the frontend's wasm decoder reads bitcode
-    // Fields positionally.
     pub video_id: String,
     pub event_count: i32,
 }
 
-impl Searchable for PkaEpisodeSearchResult {
-    fn field_to_match(&self) -> &str {
-        self.title.as_str()
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchHit {
+    pub timestamp: i32,
+    #[schema(value_type = String)]
+    pub description: CompactString,
+    pub length_seconds: i32,
+}
+
+impl From<&PkaEvent> for SearchHit {
+    fn from(event: &PkaEvent) -> Self {
+        Self {
+            timestamp: event.timestamp(),
+            description: event.description.clone(),
+            length_seconds: event.length_seconds(),
+        }
     }
 }
 
-impl std::cmp::Ord for PkaEpisodeSearchResult {
-    fn cmp(&self, other: &Self) -> Ordering {
-        FloatOrd(self.episode_number).cmp(&FloatOrd(other.episode_number))
-    }
+/// One episode in the results: its first few matching moments in order, and
+/// How many matched in total.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchGroup {
+    pub episode: EpisodeSummary,
+    pub match_count: usize,
+    pub hits: Vec<SearchHit>,
 }
 
-impl std::cmp::PartialOrd for PkaEpisodeSearchResult {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
+#[derive(Debug, Default, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchPage {
+    pub total_moments: usize,
+    pub total_episodes: usize,
+    pub groups: Vec<SearchGroup>,
+    pub next_page: Option<usize>,
 }
-
-impl std::cmp::PartialEq for PkaEpisodeSearchResult {
-    fn eq(&self, other: &Self) -> bool {
-        FloatOrd(self.episode_number).eq(&FloatOrd(other.episode_number))
-    }
-}
-
-impl std::cmp::Eq for PkaEpisodeSearchResult {}

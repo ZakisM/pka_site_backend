@@ -1,72 +1,40 @@
-use axum::body::Body;
-use axum::extract::State;
-use axum::http::{header, HeaderValue, StatusCode};
-use axum::response::{IntoResponse, Response};
+use axum::http::StatusCode;
 
-use crate::app_state::AppState;
-use crate::extractors::AppJson;
+use crate::extractors::AppQuery;
 use crate::models::errors::{ApiError, ErrorResponseBody};
-use crate::models::search::SearchQuery;
-use crate::search::pka_search::{search_episode, search_events};
+use crate::models::search::{SearchPage, SearchParams};
+use crate::models::success_response::SuccessResponse;
+use crate::search::{search, SEARCH_INDEX};
+
+// Generous for any real search, small enough that a paste can't be expensive.
+const MAX_QUERY_CHARS: usize = 200;
 
 #[utoipa::path(
-    post,
-    path = "/api/v1/search/episodes",
-    request_body = SearchQuery,
+    get,
+    path = "/api/v1/search",
+    params(SearchParams),
     responses(
-        (
-            status = 200,
-            description = "Compressed search results",
-            content_type = "application/octet-stream",
-            body = String
-        ),
-        (status = 400, description = "Invalid search request", body = ErrorResponseBody),
-        (status = 500, description = "Internal server error", body = ErrorResponseBody)
+        (status = 200, description = "One page of results grouped by episode", body = SuccessResponse<SearchPage>),
+        (status = 400, description = "Invalid search request", body = ErrorResponseBody)
     ),
     tag = "Search"
 )]
-pub async fn search_pka_episode(
-    State(state): State<AppState>,
-    AppJson(payload): AppJson<SearchQuery>,
-) -> Result<Response, ApiError> {
-    let res = search_episode(state.db.as_ref(), &payload.query).await?;
+pub async fn search_pka(
+    AppQuery(params): AppQuery<SearchParams>,
+) -> Result<SuccessResponse<SearchPage>, ApiError> {
+    if params.q.chars().count() > MAX_QUERY_CHARS {
+        return Err(ApiError::new(
+            format!("Search queries are limited to {MAX_QUERY_CHARS} characters."),
+            StatusCode::BAD_REQUEST,
+        ));
+    }
 
-    Ok(binary_response(res))
-}
+    let index = SEARCH_INDEX.read().await;
 
-#[utoipa::path(
-    post,
-    path = "/api/v1/search/events",
-    request_body = SearchQuery,
-    responses(
-        (
-            status = 200,
-            description = "Compressed search results",
-            content_type = "application/octet-stream",
-            body = String
-        ),
-        (status = 400, description = "Invalid search request", body = ErrorResponseBody),
-        (status = 500, description = "Internal server error", body = ErrorResponseBody)
-    ),
-    tag = "Search"
-)]
-pub async fn search_pka_event(
-    State(state): State<AppState>,
-    AppJson(payload): AppJson<SearchQuery>,
-) -> Result<Response, ApiError> {
-    let res = search_events(state.redis.as_ref(), &payload.query).await?;
-
-    Ok(binary_response(res))
-}
-
-fn binary_response(body: Vec<u8>) -> Response {
-    (
-        StatusCode::OK,
-        [(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/octet-stream"),
-        )],
-        Body::from(body),
-    )
-        .into_response()
+    Ok(SuccessResponse::new(search(
+        &index,
+        &params.q,
+        params.sort,
+        params.page,
+    )))
 }

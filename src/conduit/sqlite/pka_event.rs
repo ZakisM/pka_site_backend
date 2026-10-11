@@ -2,8 +2,7 @@ use compact_str::CompactString;
 use rand::prelude::IndexedRandom;
 use rand::rng;
 
-use crate::models::pka_event::PkaEvent;
-use crate::models::search::PkaEventSearchResult;
+use crate::models::pka_event::{PkaEvent, RandomPkaEvent};
 use crate::Repo;
 
 pub async fn all(repo: &Repo) -> Result<Vec<PkaEvent>, sqlx::Error> {
@@ -48,7 +47,7 @@ pub async fn insert(repo: &Repo, event: PkaEvent) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn random_amount(repo: &Repo) -> Result<Option<PkaEventSearchResult>, sqlx::Error> {
+pub async fn random_amount(repo: &Repo) -> Result<Option<RandomPkaEvent>, sqlx::Error> {
     let mut all_events = all(repo).await?;
 
     all_events.retain(|e| {
@@ -58,7 +57,7 @@ pub async fn random_amount(repo: &Repo) -> Result<Option<PkaEventSearchResult>, 
 
     let mut rng = rng();
 
-    let res = all_events.choose(&mut rng).map(PkaEventSearchResult::from);
+    let res = all_events.choose(&mut rng).map(RandomPkaEvent::from);
 
     Ok(res)
 }
