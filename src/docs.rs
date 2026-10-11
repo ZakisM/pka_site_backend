@@ -1,14 +1,14 @@
 use utoipa::openapi::OpenApi;
 use utoipa::OpenApi as OpenApiTrait;
 
-use crate::handlers::{episode, event, search, static_files};
+use crate::handlers::{episode, event, related, search, static_files};
 use crate::models::errors::ErrorResponseBody;
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_event::RandomPkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
-use crate::models::search::{EpisodeSummary, SearchPage, SearchSort};
+use crate::models::search::{EpisodeSummary, RelatedMoment, SearchPage, SearchSort};
 use crate::models::success_response::SuccessResponse;
 
 #[derive(OpenApiTrait)]
@@ -21,6 +21,7 @@ use crate::models::success_response::SuccessResponse;
         episode::latest_pka_episode,
         episode::random_pka_episode,
         event::random_pka_event,
+        related::related_pka_events,
         search::search_pka,
         static_files::robots_txt,
         static_files::sitemap_xml
@@ -31,6 +32,7 @@ use crate::models::success_response::SuccessResponse;
         SuccessResponse<RandomPkaEvent>,
         SuccessResponse<SearchPage>,
         SuccessResponse<Vec<EpisodeSummary>>,
+        SuccessResponse<Vec<RelatedMoment>>,
         ErrorResponseBody,
         PkaEpisode,
         PkaEvent,

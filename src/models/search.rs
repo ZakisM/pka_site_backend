@@ -69,6 +69,29 @@ pub struct SearchGroup {
     pub hits: Vec<SearchHit>,
 }
 
+#[derive(Debug, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+#[serde(rename_all = "camelCase")]
+pub struct RelatedParams {
+    /// The moment's episode number.
+    pub episode: f32,
+    /// The moment's start, in seconds.
+    pub timestamp: i32,
+}
+
+/// A moment in another episode about the same thing, with the words they share.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RelatedMoment {
+    pub episode: EpisodeSummary,
+    pub timestamp: i32,
+    #[schema(value_type = String)]
+    pub description: CompactString,
+    pub length_seconds: i32,
+    #[schema(value_type = Vec<String>)]
+    pub shared_terms: Vec<CompactString>,
+}
+
 #[derive(Debug, Default, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchPage {

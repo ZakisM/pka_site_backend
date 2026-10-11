@@ -12,6 +12,10 @@ use crate::models::pka_event::PkaEvent;
 use crate::models::search::{EpisodeSummary, SearchGroup, SearchHit, SearchPage, SearchSort};
 use crate::Repo;
 
+pub mod related;
+
+use related::RelatedIndex;
+
 pub const GROUPS_PER_PAGE: usize = 12;
 pub const HITS_PER_GROUP: usize = 3;
 // Beyond this a query is a paste, not a search; it also bounds the bitmask.
@@ -24,6 +28,7 @@ pub struct SearchIndex {
     /// Newest first, which is also the default result order.
     pub episodes: Box<[EpisodeSummary]>,
     pub events: Box<[PkaEvent]>,
+    pub related: RelatedIndex,
 }
 
 pub static SEARCH_INDEX: LazyLock<RwLock<SearchIndex>> = LazyLock::new(Default::default);
@@ -36,9 +41,13 @@ pub async fn refresh_index(repo: &Repo) -> anyhow::Result<()> {
         .await
         .context("Failed to load events for the search index")?;
 
+    // Built before taking the lock, so searches never wait on it.
+    let related = RelatedIndex::build(&events);
+
     *SEARCH_INDEX.write().await = SearchIndex {
         episodes: episodes.into_boxed_slice(),
         events: events.into_boxed_slice(),
+        related,
     };
 
     Ok(())
@@ -95,7 +104,7 @@ impl Matcher {
 }
 
 // Episode numbers can be fractional (524.1); compare them as tenths.
-fn episode_key(number: f32) -> i64 {
+pub fn episode_key(number: f32) -> i64 {
     (f64::from(number) * 10.0).round() as i64
 }
 
@@ -196,6 +205,7 @@ mod tests {
 
     fn index() -> SearchIndex {
         SearchIndex {
+            related: RelatedIndex::default(),
             episodes: vec![
                 episode(825.0, "PKA 825 W/ Harley: Redemption Of Wings"),
                 episode(524.1, "Part 1 Confederate Talk"),
@@ -297,6 +307,7 @@ mod tests {
         let index = SearchIndex {
             episodes: episodes.into_boxed_slice(),
             events: events.into_boxed_slice(),
+            related: RelatedIndex::default(),
         };
 
         let first = search(&index, "kyle", SearchSort::Newest, 0);

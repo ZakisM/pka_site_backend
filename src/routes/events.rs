@@ -1,8 +1,10 @@
 use axum::{routing::get, Router};
 
 use crate::app_state::AppState;
-use crate::handlers::event;
+use crate::handlers::{event, related};
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/random", get(event::random_pka_event))
+    Router::new()
+        .route("/random", get(event::random_pka_event))
+        .route("/related", get(related::related_pka_events))
 }
