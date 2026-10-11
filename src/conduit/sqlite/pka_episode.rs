@@ -4,7 +4,7 @@ use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
-use crate::models::search::PkaEpisodeSearchResult;
+use crate::models::search::EpisodeSummary;
 use crate::Repo;
 
 pub async fn all(repo: &Repo) -> Result<Vec<PkaEpisode>, sqlx::Error> {
@@ -46,16 +46,27 @@ pub async fn random(repo: &Repo) -> Result<f32, sqlx::Error> {
     .await
 }
 
-pub async fn all_with_yt_details(repo: &Repo) -> Result<Vec<PkaEpisodeSearchResult>, sqlx::Error> {
+// Every column is NOT NULL in the schema, but SQLite's nullability inference
+// Gives up across the LEFT JOIN, hence the `!` overrides.
+pub async fn all_summaries<'e>(
+    repo: impl sqlx::SqliteExecutor<'e>,
+) -> Result<Vec<EpisodeSummary>, sqlx::Error> {
     sqlx::query_as!(
-        PkaEpisodeSearchResult,
+        EpisodeSummary,
         r#"SELECT
-            e.number         AS "episode_number: f32",
-            e.upload_date    AS "upload_date: i64",
-            y.title          AS "title: String",
-            y.length_seconds AS "length_seconds: i32"
+            e.number                   AS "episode_number!: f32",
+            e.upload_date              AS "upload_date!: i64",
+            y.title                    AS "title!: String",
+            y.length_seconds           AS "length_seconds!: i32",
+            y.video_id                 AS "video_id!: String",
+            COALESCE(c.event_count, 0) AS "event_count!: i32"
           FROM pka_episode e
           INNER JOIN pka_youtube_details y ON y.episode_number = e.number
+          LEFT JOIN (
+            SELECT episode_number, COUNT(*) AS event_count
+            FROM pka_event
+            GROUP BY episode_number
+          ) c ON c.episode_number = e.number
           ORDER BY e.number DESC"#
     )
     .fetch_all(repo)

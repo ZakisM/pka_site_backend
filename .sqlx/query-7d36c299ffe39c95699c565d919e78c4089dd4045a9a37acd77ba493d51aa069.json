@@ -6,7 +6,13 @@
       {
         "name": "number: f32",
         "ordinal": 0,
-        "type_info": "Float"
+        "type_info": "Float",
+        "origin": {
+          "Table": {
+            "table": "pka_episode",
+            "name": "number"
+          }
+        }
       }
     ],
     "parameters": {

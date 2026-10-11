@@ -10,7 +10,21 @@ use crate::conduit::sqlite::pka_episode::find_youtube_link;
 use crate::extractors::AppPath;
 use crate::models::errors::{ApiError, ErrorResponseBody};
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
+use crate::models::search::EpisodeSummary;
 use crate::models::success_response::SuccessResponse;
+use crate::search::SEARCH_INDEX;
+
+#[utoipa::path(
+    get,
+    path = "/api/v1/episodes",
+    responses(
+        (status = 200, description = "Every episode, newest first", body = SuccessResponse<Vec<EpisodeSummary>>)
+    ),
+    tag = "Episodes"
+)]
+pub async fn all_pka_episodes() -> SuccessResponse<Vec<EpisodeSummary>> {
+    SuccessResponse::new(SEARCH_INDEX.read().await.episodes.to_vec())
+}
 
 #[utoipa::path(
     get,

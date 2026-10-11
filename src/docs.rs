@@ -1,38 +1,43 @@
 use utoipa::openapi::OpenApi;
 use utoipa::OpenApi as OpenApiTrait;
 
-use crate::handlers::{episode, event, search, static_files};
+use crate::handlers::{episode, event, related, search, static_files};
 use crate::models::errors::ErrorResponseBody;
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
 use crate::models::pka_event::PkaEvent;
+use crate::models::pka_event::RandomPkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
-use crate::models::search::{PkaEventSearchResult, SearchQuery};
+use crate::models::search::{EpisodeSummary, RelatedMoment, SearchPage, SearchSort};
 use crate::models::success_response::SuccessResponse;
 
 #[derive(OpenApiTrait)]
 #[openapi(
     info(title = "PKA Index API", version = "1.0"),
     paths(
+        episode::all_pka_episodes,
         episode::watch_pka_episode,
         episode::find_pka_episode_youtube_link,
         episode::latest_pka_episode,
         episode::random_pka_episode,
         event::random_pka_event,
-        search::search_pka_episode,
-        search::search_pka_event,
+        related::related_pka_events,
+        search::search_pka,
         static_files::robots_txt,
         static_files::sitemap_xml
     ),
     components(schemas(
         SuccessResponse<PkaEpisodeWithAll>,
         SuccessResponse<String>,
-        SuccessResponse<PkaEventSearchResult>,
+        SuccessResponse<RandomPkaEvent>,
+        SuccessResponse<SearchPage>,
+        SuccessResponse<Vec<EpisodeSummary>>,
+        SuccessResponse<Vec<RelatedMoment>>,
         ErrorResponseBody,
         PkaEpisode,
         PkaEvent,
         PkaYoutubeDetails,
-        SearchQuery
+        SearchSort
     )),
     tags(
         (name = "Episodes"),

@@ -178,7 +178,7 @@ pub fn extract_pka_episode_events(
     }
 
     //sort events by timestamp
-    events_without_duration.sort_by(|a, b| a.2.cmp(&b.2));
+    events_without_duration.sort_by_key(|a| a.2);
 
     let events = events_without_duration
         .iter()
@@ -211,24 +211,28 @@ fn normalize_timestamp(raw: &str) -> anyhow::Result<i32> {
     let parts: Vec<&str> = time_fragment.split(':').collect();
 
     let seconds = match parts.len() {
-        1 => {
-            parts[0].parse::<i32>()
-                .with_context(|| format!("Failed to parse seconds from '{time_fragment}' (derived from '{raw}')"))?
-        }
+        1 => parts[0].parse::<i32>().with_context(|| {
+            format!("Failed to parse seconds from '{time_fragment}' (derived from '{raw}')")
+        })?,
         2 => {
-            let minutes = parts[0].parse::<i32>()
-                .with_context(|| format!("Failed to parse minutes from '{time_fragment}' (derived from '{raw}')"))?;
-            let seconds = parts[1].parse::<i32>()
-                .with_context(|| format!("Failed to parse seconds from '{time_fragment}' (derived from '{raw}')"))?;
+            let minutes = parts[0].parse::<i32>().with_context(|| {
+                format!("Failed to parse minutes from '{time_fragment}' (derived from '{raw}')")
+            })?;
+            let seconds = parts[1].parse::<i32>().with_context(|| {
+                format!("Failed to parse seconds from '{time_fragment}' (derived from '{raw}')")
+            })?;
             minutes * 60 + seconds
         }
         3 => {
-            let hours = parts[0].parse::<i32>()
-                .with_context(|| format!("Failed to parse hours from '{time_fragment}' (derived from '{raw}')"))?;
-            let minutes = parts[1].parse::<i32>()
-                .with_context(|| format!("Failed to parse minutes from '{time_fragment}' (derived from '{raw}')"))?;
-            let seconds = parts[2].parse::<i32>()
-                .with_context(|| format!("Failed to parse seconds from '{time_fragment}' (derived from '{raw}')"))?;
+            let hours = parts[0].parse::<i32>().with_context(|| {
+                format!("Failed to parse hours from '{time_fragment}' (derived from '{raw}')")
+            })?;
+            let minutes = parts[1].parse::<i32>().with_context(|| {
+                format!("Failed to parse minutes from '{time_fragment}' (derived from '{raw}')")
+            })?;
+            let seconds = parts[2].parse::<i32>().with_context(|| {
+                format!("Failed to parse seconds from '{time_fragment}' (derived from '{raw}')")
+            })?;
             hours * 3600 + minutes * 60 + seconds
         }
         _ => bail!("Unknown timestamp format: '{time_fragment}' (derived from '{raw}')"),

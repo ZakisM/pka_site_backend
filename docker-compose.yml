@@ -1,8 +1,6 @@
 services:
   app:
     image: zakism/pka-index-backend:master
-    depends_on:
-      - redis
     volumes:
       - ./pka_index_data:/app/pka_index_data
     environment:
@@ -16,14 +14,3 @@ services:
     ports:
       - 127.0.0.1:5678:5678
     restart: always
-
-  redis:
-    image: redis:8.6.2-alpine
-    ports:
-      - "127.0.0.1:6379:6379"
-    restart: always
-
-  helper:
-    image: alpine
-    command: sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"
-    privileged: true

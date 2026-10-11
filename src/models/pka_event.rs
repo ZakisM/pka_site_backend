@@ -1,12 +1,7 @@
-use std::cmp::Ordering;
-
 use compact_str::CompactString;
-use float_ord::FloatOrd;
 use serde::Serialize;
 use sqlx::FromRow;
 use utoipa::ToSchema;
-
-use crate::search::Searchable;
 
 #[derive(Clone, Debug, Serialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -21,12 +16,6 @@ pub struct PkaEvent {
     pub description: CompactString,
     pub length_seconds: i32,
     pub upload_date: i64,
-}
-
-impl AsRef<PkaEvent> for &PkaEvent {
-    fn as_ref(&self) -> &PkaEvent {
-        self
-    }
 }
 
 impl PkaEvent {
@@ -73,28 +62,26 @@ impl PkaEvent {
     }
 }
 
-impl Searchable for PkaEvent {
-    fn field_to_match(&self) -> &str {
-        self.description()
-    }
+/// A moment with the episode it belongs to, for the random-moment link.
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RandomPkaEvent {
+    pub episode_number: f32,
+    pub timestamp: i32,
+    #[schema(value_type = String)]
+    pub description: CompactString,
+    pub length_seconds: i32,
+    pub upload_date: i64,
 }
 
-impl std::cmp::Ord for PkaEvent {
-    fn cmp(&self, other: &Self) -> Ordering {
-        FloatOrd(self.episode_number()).cmp(&FloatOrd(other.episode_number()))
+impl From<&PkaEvent> for RandomPkaEvent {
+    fn from(event: &PkaEvent) -> Self {
+        Self {
+            episode_number: event.episode_number(),
+            timestamp: event.timestamp(),
+            description: event.description.clone(),
+            length_seconds: event.length_seconds(),
+            upload_date: event.upload_date(),
+        }
     }
 }
-
-impl std::cmp::PartialOrd for PkaEvent {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl std::cmp::PartialEq for PkaEvent {
-    fn eq(&self, other: &Self) -> bool {
-        FloatOrd(self.episode_number()).eq(&FloatOrd(other.episode_number()))
-    }
-}
-
-impl std::cmp::Eq for PkaEvent {}
