@@ -20,10 +20,9 @@ pub async fn search_episode(state: &Repo, query: &str) -> anyhow::Result<Vec<u8>
         .cloned()
         .collect::<Vec<_>>();
 
-    let results = results
-        .as_bitcode_compressed()
-        .await
-        .with_context(|| format!("Failed to compress episode search results for query '{query}'"))?;
+    let results = results.as_bitcode_compressed().await.with_context(|| {
+        format!("Failed to compress episode search results for query '{query}'")
+    })?;
 
     Ok(results)
 }
@@ -42,10 +41,9 @@ pub async fn search_events(redis: &RedisDb, query: &str) -> anyhow::Result<Vec<u
                 .map(PkaEventSearchResult::from)
                 .collect::<Vec<_>>();
 
-            let results = results
-                .as_bitcode_compressed()
-                .await
-                .with_context(|| format!("Failed to compress event search results for query '{query}'"))?;
+            let results = results.as_bitcode_compressed().await.with_context(|| {
+                format!("Failed to compress event search results for query '{query}'")
+            })?;
 
             event_cache::set(redis, redis_tag, query.to_owned(), results.as_slice()).await?;
 
