@@ -145,6 +145,8 @@ const STOPWORDS: &[&str] = &[
     "find",
     "first",
     "found",
+    "investigate",
+    "investigates",
     "give",
     "goes",
     "going",
