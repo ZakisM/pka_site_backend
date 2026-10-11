@@ -1,40 +1,24 @@
-use std::sync::Arc;
-
 use anyhow::Context;
-use axum::http::{header, Method};
-use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::app_state::AppState;
+use crate::catalog::{self, SharedCatalog};
 use crate::config::Config;
-use crate::search::refresh_index;
-use crate::workers::events::update_search_index;
-use crate::workers::new_episode::latest_episode;
-use crate::{db, Repo, YT_API_KEY};
+use crate::db;
+use crate::updater::youtube_api::YoutubeApi;
+use crate::workers::keep_current;
 
-pub struct InitializedApp {
-    pub app_state: AppState,
-    pub cors: CorsLayer,
-}
+/// Opens the database, loads the catalog from it and starts keeping both
+/// Current. Fails if the catalog can't be loaded: there'd be nothing to serve.
+pub async fn initialize(config: &Config) -> anyhow::Result<AppState> {
+    let repo = db::create_pool(&config.database_url).await?;
+    let catalog = SharedCatalog::new(
+        catalog::load(&repo)
+            .await
+            .context("Failed to load the catalog")?,
+    );
+    let yt_api = YoutubeApi::new(config.yt_api_key.clone())?;
 
-pub async fn initialize(config: &Config) -> anyhow::Result<InitializedApp> {
-    let db_pool: Arc<Repo> = Arc::new(db::create_pool(&config.database_url).await?);
+    tokio::task::spawn(keep_current(repo, yt_api, catalog.clone()));
 
-    refresh_index(db_pool.as_ref())
-        .await
-        .context("Failed to prime the search index")?;
-    YT_API_KEY.set(config.yt_api_key.clone()).await;
-
-    let worker_state = || db_pool.clone();
-
-    tokio::task::spawn(latest_episode(worker_state()));
-    tokio::task::spawn(update_search_index(worker_state()));
-
-    let app_state = AppState::new(db_pool.clone());
-    let cors = CorsLayer::new()
-        .allow_methods([Method::GET])
-        .allow_headers([header::AUTHORIZATION, header::CONTENT_TYPE])
-        .allow_origin(AllowOrigin::predicate(|_, _| true))
-        .allow_credentials(true);
-
-    Ok(InitializedApp { app_state, cors })
+    Ok(AppState::new(catalog))
 }

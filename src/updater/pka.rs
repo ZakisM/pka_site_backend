@@ -1,17 +1,17 @@
 use std::sync::LazyLock;
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use compact_str::{CompactString, ToCompactString};
 use regex::{Regex, RegexBuilder};
 use tracing::{error, info, warn};
 
+use crate::Repo;
 use crate::conduit::sqlite::{pka_episode, pka_event, pka_youtube_details};
 use crate::models::pka_episode::PkaEpisode;
 use crate::models::pka_event::PkaEvent;
 use crate::models::pka_youtube_details::PkaYoutubeDetails;
-use crate::updater::youtube_api::models::playlist_items::PlaylistItem;
 use crate::updater::youtube_api::YoutubeApi;
-use crate::Repo;
+use crate::updater::youtube_api::models::playlist_items::PlaylistItem;
 
 const WOODY_YOUTUBE_UPLOAD_PLAYLIST_ID: &str = "UUIPVJoHb_A5S3kcv3TJlyEg";
 
@@ -22,12 +22,13 @@ static TITLE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         .expect("Failed to create TITLE_REGEX")
 });
 
-pub async fn load_new_episodes(state: &Repo) -> anyhow::Result<()> {
+/// Adds any episodes uploaded since the newest one stored, oldest first, and
+/// Says how many it added. Stops at the first it can't add (usually a video
+/// Whose timeline isn't up yet), so the next check retries from there.
+pub async fn load_new_episodes(repo: &Repo, yt_api: &YoutubeApi) -> anyhow::Result<usize> {
     info!("Checking playlist for missing episodes.");
 
-    let stored_episode_number = pka_episode::latest(state).await?.floor() as usize;
-
-    let yt_api = YoutubeApi::new()?;
+    let stored_episode_number = pka_episode::latest(repo).await?.floor() as usize;
 
     let latest_episode_title = yt_api
         .get_latest_uploads(1, WOODY_YOUTUBE_UPLOAD_PLAYLIST_ID)
@@ -47,50 +48,57 @@ pub async fn load_new_episodes(state: &Repo) -> anyhow::Result<()> {
         .context("Failed to parse latest episode number to f32")?
         as usize;
 
-    let episodes_missing = (latest_episode_number).saturating_sub(stored_episode_number);
+    let episodes_missing = latest_episode_number.saturating_sub(stored_episode_number);
 
-    if episodes_missing > 0 {
-        info!("Fetching {episodes_missing} missing episodes");
-
-        let missing_uploads = yt_api
-            .get_latest_uploads(episodes_missing, WOODY_YOUTUBE_UPLOAD_PLAYLIST_ID)
-            .await?
-            .items;
-
-        for episode_number in (stored_episode_number + 1)..=latest_episode_number {
-            let episode_name = format!("PKA {}", episode_number).to_compact_string();
-
-            match missing_uploads.iter().find(|ep| {
-                TITLE_REGEX
-                    .captures(&ep.snippet.title)
-                    .and_then(|c| c.name("number"))
-                    .and_then(|n| n.as_str().parse::<usize>().ok())
-                    .is_some_and(|n| n == episode_number)
-            }) {
-                Some(matching_episode) => {
-                    info!("Found {episode_name} in playlist. Attempting to extract video details.");
-
-                    extract_then_save_events(
-                        state,
-                        &yt_api,
-                        episode_name,
-                        episode_number as f32,
-                        matching_episode,
-                    )
-                    .await?;
-                }
-                None => {
-                    warn!("Could not find {episode_name} in playlist.");
-                }
-            }
-        }
+    if episodes_missing == 0 {
+        return Ok(0);
     }
 
-    Ok(())
+    info!("Fetching {episodes_missing} missing episodes");
+
+    let missing_uploads = yt_api
+        .get_latest_uploads(episodes_missing, WOODY_YOUTUBE_UPLOAD_PLAYLIST_ID)
+        .await?
+        .items;
+    let mut added = 0;
+
+    for episode_number in (stored_episode_number + 1)..=latest_episode_number {
+        let episode_name = format!("PKA {episode_number}").to_compact_string();
+
+        let Some(matching_episode) = missing_uploads.iter().find(|ep| {
+            TITLE_REGEX
+                .captures(&ep.snippet.title)
+                .and_then(|c| c.name("number"))
+                .and_then(|n| n.as_str().parse::<usize>().ok())
+                .is_some_and(|n| n == episode_number)
+        }) else {
+            warn!("Could not find {episode_name} in playlist.");
+            continue;
+        };
+
+        info!("Found {episode_name} in playlist. Attempting to extract video details.");
+
+        if let Err(e) = extract_then_save_events(
+            repo,
+            yt_api,
+            episode_name.clone(),
+            episode_number as f32,
+            matching_episode,
+        )
+        .await
+        {
+            error!("Couldn't add {episode_name}: {e:#}");
+            break;
+        }
+
+        added += 1;
+    }
+
+    Ok(added)
 }
 
 async fn extract_then_save_events(
-    state: &Repo,
+    repo: &Repo,
     yt_api: &YoutubeApi,
     name: CompactString,
     number: f32,
@@ -109,7 +117,7 @@ async fn extract_then_save_events(
 
     let pka_ep = PkaEpisode::new(
         number,
-        name.clone(),
+        name,
         playlist_item.snippet.resource_id.video_id.to_owned(),
         playlist_item.snippet.published_at,
     );
@@ -121,23 +129,41 @@ async fn extract_then_save_events(
         details.content_details.duration,
     );
 
-    if let Err(e) = pka_episode::insert(state, pka_ep).await {
-        error!("Error adding latest pka_ep '{name}' (episode {number}): {e}");
-    }
-
-    for evt in events.into_iter() {
-        let event_id = evt.event_id();
-        if let Err(e) = pka_event::insert(state, evt).await {
-            error!("Error adding latest event '{event_id}' for episode {number}: {e}");
-        }
-    }
-
-    let yt_video_id = youtube_details.video_id.clone();
-    if let Err(e) = pka_youtube_details::insert(state, youtube_details).await {
-        error!("Error adding latest youtube_details for episode {number} (video ID '{yt_video_id}'): {e}");
-    }
+    save_episode(repo, pka_ep, youtube_details, events).await?;
 
     info!("Extracted successfully.");
+
+    Ok(())
+}
+
+/// Stores an episode with its video and moments, all or nothing: a half-saved
+/// Episode would be listed but unplayable, and never retried.
+pub async fn save_episode(
+    repo: &Repo,
+    episode: PkaEpisode,
+    youtube_details: PkaYoutubeDetails,
+    events: Vec<PkaEvent>,
+) -> anyhow::Result<()> {
+    let number = episode.number;
+    let mut tx = repo.begin().await?;
+
+    pka_episode::insert(&mut *tx, episode)
+        .await
+        .with_context(|| format!("Failed to save episode {number}"))?;
+
+    for event in events {
+        let event_id = event.event_id();
+
+        pka_event::insert(&mut *tx, event)
+            .await
+            .with_context(|| format!("Failed to save moment '{event_id}'"))?;
+    }
+
+    pka_youtube_details::insert(&mut *tx, youtube_details)
+        .await
+        .with_context(|| format!("Failed to save the video for episode {number}"))?;
+
+    tx.commit().await?;
 
     Ok(())
 }
@@ -177,8 +203,10 @@ pub fn extract_pka_episode_events(
         bail!("Could not find any events");
     }
 
-    //sort events by timestamp
+    // In time order, and one moment per timestamp: the timestamp is part of
+    // The moment's ID, and a repeated line in a description would collide.
     events_without_duration.sort_by_key(|a| a.2);
+    events_without_duration.dedup_by_key(|a| a.2);
 
     let events = events_without_duration
         .iter()
@@ -283,5 +311,29 @@ mod tests {
         assert!(normalize_timestamp("12:34:56:78").is_err()); // Too many parts
         assert!(normalize_timestamp("abc").is_err()); // Non-digit characters
         assert!(normalize_timestamp("12:ab").is_err()); // Non-digit parts
+    }
+
+    #[test]
+    fn test_extract_keeps_one_moment_per_timestamp() {
+        let events = extract_pka_episode_events(
+            900.0,
+            "0:00 Intro\n12:34 Kyle's bike\n12:34 Kyle's bike (again)\n1:02:03 Outro",
+            &4000,
+            &0,
+        )
+        .unwrap();
+
+        assert_eq!(
+            events.iter().map(PkaEvent::timestamp).collect::<Vec<_>>(),
+            vec![0, 754, 3723]
+        );
+        assert_eq!(events[1].description(), "Kyle's bike");
+        assert_eq!(
+            events
+                .iter()
+                .map(PkaEvent::length_seconds)
+                .collect::<Vec<_>>(),
+            vec![754, 2969, 277]
+        );
     }
 }

@@ -1,6 +1,5 @@
 use compact_str::CompactString;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::models::pka_event::PkaEvent;
@@ -29,14 +28,16 @@ pub enum SearchSort {
 }
 
 /// An episode as lists and search results show it.
-#[derive(Clone, Debug, Serialize, FromRow, ToSchema)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct EpisodeSummary {
     pub episode_number: f32,
     pub upload_date: i64,
-    pub title: String,
+    #[schema(value_type = String)]
+    pub title: CompactString,
     pub length_seconds: i32,
-    pub video_id: String,
+    #[schema(value_type = String)]
+    pub video_id: CompactString,
     pub event_count: i32,
 }
 

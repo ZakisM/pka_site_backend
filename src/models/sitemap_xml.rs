@@ -51,10 +51,11 @@ pub struct Urlset {
 #[serde(rename_all = "lowercase")]
 pub struct Url {
     pub loc: XmlVal,
-    #[serde(rename = "lastmod")]
+    #[serde(rename = "lastmod", skip_serializing_if = "Option::is_none")]
     pub last_mod: Option<XmlVal>,
-    #[serde(rename = "changefreq")]
+    #[serde(rename = "changefreq", skip_serializing_if = "Option::is_none")]
     pub change_freq: Option<XmlVal>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub priority: Option<XmlVal>,
 }
 

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT\n            video_id       AS \"video_id: CompactString\",\n            episode_number AS \"episode_number: f32\",\n            title          AS \"title: CompactString\",\n            length_seconds AS \"length_seconds: i32\"\n          FROM pka_youtube_details\n          WHERE episode_number = ?\n          LIMIT 1",
+  "query": "SELECT\n            video_id       AS \"video_id: CompactString\",\n            episode_number AS \"episode_number: f32\",\n            title          AS \"title: CompactString\",\n            length_seconds AS \"length_seconds: i32\"\n          FROM pka_youtube_details",
   "describe": {
     "columns": [
       {
@@ -49,7 +49,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       false,
@@ -58,5 +58,5 @@
       false
     ]
   },
-  "hash": "5e7f92e078c20816c830624e39a19d495964c8c88b3dfb7f2be31e10f038259f"
+  "hash": "869f3b0806732c1d7c04b21660f44bb35e50a0f37b396790a3c8de5c16637eae"
 }

@@ -1,18 +1,19 @@
 use axum::extract::State;
-use axum::http::StatusCode;
-
-use anyhow::Context;
+use axum::http::{HeaderValue, StatusCode, header};
+use axum::response::{IntoResponse, Response};
 use compact_str::CompactString;
 
 use crate::app_state::AppState;
-use crate::conduit::sqlite::pka_episode;
-use crate::conduit::sqlite::pka_episode::find_youtube_link;
 use crate::extractors::AppPath;
+use crate::handlers::NO_STORE;
 use crate::models::errors::{ApiError, ErrorResponseBody};
 use crate::models::pka_episode_with_all::PkaEpisodeWithAll;
 use crate::models::search::EpisodeSummary;
 use crate::models::success_response::SuccessResponse;
-use crate::search::SEARCH_INDEX;
+
+fn not_found() -> ApiError {
+    ApiError::new("That episode isn't in the index.", StatusCode::NOT_FOUND)
+}
 
 #[utoipa::path(
     get,
@@ -22,8 +23,15 @@ use crate::search::SEARCH_INDEX;
     ),
     tag = "Episodes"
 )]
-pub async fn all_pka_episodes() -> SuccessResponse<Vec<EpisodeSummary>> {
-    SuccessResponse::new(SEARCH_INDEX.read().await.episodes.to_vec())
+pub async fn all_pka_episodes(State(state): State<AppState>) -> Response {
+    (
+        [(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/json"),
+        )],
+        state.catalog.get().episodes_json.clone(),
+    )
+        .into_response()
 }
 
 #[utoipa::path(
@@ -37,8 +45,7 @@ pub async fn all_pka_episodes() -> SuccessResponse<Vec<EpisodeSummary>> {
             body = SuccessResponse<PkaEpisodeWithAll>
         ),
         (status = 400, description = "Invalid episode number", body = ErrorResponseBody),
-        (status = 404, description = "Episode not found", body = ErrorResponseBody),
-        (status = 500, description = "Internal server error", body = ErrorResponseBody)
+        (status = 404, description = "Episode not found", body = ErrorResponseBody)
     ),
     tag = "Episodes"
 )]
@@ -46,9 +53,10 @@ pub async fn watch_pka_episode(
     AppPath(number): AppPath<f32>,
     State(state): State<AppState>,
 ) -> Result<SuccessResponse<PkaEpisodeWithAll>, ApiError> {
-    let res = pka_episode::find_with_all(state.db.as_ref(), number).await?;
+    let catalog = state.catalog.get();
+    let episode = catalog.episode(number).ok_or_else(not_found)?;
 
-    Ok(SuccessResponse::new(res))
+    Ok(SuccessResponse::new(catalog.with_all(episode)))
 }
 
 #[utoipa::path(
@@ -62,8 +70,7 @@ pub async fn watch_pka_episode(
             body = SuccessResponse<String>
         ),
         (status = 400, description = "Invalid episode number", body = ErrorResponseBody),
-        (status = 404, description = "Episode not found", body = ErrorResponseBody),
-        (status = 500, description = "Internal server error", body = ErrorResponseBody)
+        (status = 404, description = "Episode not found", body = ErrorResponseBody)
     ),
     tag = "Episodes"
 )]
@@ -71,11 +78,10 @@ pub async fn find_pka_episode_youtube_link(
     AppPath(number): AppPath<f32>,
     State(state): State<AppState>,
 ) -> Result<SuccessResponse<CompactString>, ApiError> {
-    let res = find_youtube_link(state.db.as_ref(), number)
-        .await
-        .map_err(|_| ApiError::new("Couldn't find episode number", StatusCode::NOT_FOUND))?;
+    let catalog = state.catalog.get();
+    let episode = catalog.episode(number).ok_or_else(not_found)?;
 
-    Ok(SuccessResponse::new(res))
+    Ok(SuccessResponse::new(episode.episode.youtube_link.clone()))
 }
 
 #[utoipa::path(
@@ -87,20 +93,17 @@ pub async fn find_pka_episode_youtube_link(
             description = "Latest episode",
             body = SuccessResponse<PkaEpisodeWithAll>
         ),
-        (status = 500, description = "Internal server error", body = ErrorResponseBody)
+        (status = 404, description = "No episodes yet", body = ErrorResponseBody)
     ),
     tag = "Episodes"
 )]
 pub async fn latest_pka_episode(
     State(state): State<AppState>,
 ) -> Result<SuccessResponse<PkaEpisodeWithAll>, ApiError> {
-    let latest_episode_number = pka_episode::latest(state.db.as_ref())
-        .await
-        .context("Couldn't get latest episode number.")?;
+    let catalog = state.catalog.get();
+    let episode = catalog.latest().ok_or_else(not_found)?;
 
-    let res = pka_episode::find_with_all(state.db.as_ref(), latest_episode_number).await?;
-
-    Ok(SuccessResponse::new(res))
+    Ok(SuccessResponse::new(catalog.with_all(episode)))
 }
 
 #[utoipa::path(
@@ -112,18 +115,15 @@ pub async fn latest_pka_episode(
             description = "Random episode",
             body = SuccessResponse<PkaEpisodeWithAll>
         ),
-        (status = 500, description = "Internal server error", body = ErrorResponseBody)
+        (status = 404, description = "No episodes yet", body = ErrorResponseBody)
     ),
     tag = "Episodes"
 )]
 pub async fn random_pka_episode(
     State(state): State<AppState>,
-) -> Result<SuccessResponse<PkaEpisodeWithAll>, ApiError> {
-    let random_episode_number = pka_episode::random(state.db.as_ref())
-        .await
-        .context("Couldn't get random episode number.")?;
+) -> Result<impl IntoResponse, ApiError> {
+    let catalog = state.catalog.get();
+    let episode = catalog.random_episode().ok_or_else(not_found)?;
 
-    let res = pka_episode::find_with_all(state.db.as_ref(), random_episode_number).await?;
-
-    Ok(SuccessResponse::new(res))
+    Ok((NO_STORE, SuccessResponse::new(catalog.with_all(episode))))
 }

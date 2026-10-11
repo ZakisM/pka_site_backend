@@ -1,8 +1,8 @@
 use serde::Serialize;
 
+use axum::Json;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use utoipa::ToSchema;
 
 #[derive(Serialize, ToSchema)]

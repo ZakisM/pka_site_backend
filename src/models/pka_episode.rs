@@ -1,7 +1,4 @@
-use std::cmp::Ordering;
-
 use compact_str::CompactString;
-use float_ord::FloatOrd;
 use serde::Serialize;
 use sqlx::FromRow;
 use utoipa::ToSchema;
@@ -32,28 +29,4 @@ impl PkaEpisode {
             upload_date,
         }
     }
-
-    pub fn number(&self) -> f32 {
-        self.number
-    }
 }
-
-impl std::cmp::Ord for PkaEpisode {
-    fn cmp(&self, other: &Self) -> Ordering {
-        FloatOrd(self.number).cmp(&FloatOrd(other.number))
-    }
-}
-
-impl std::cmp::PartialOrd for PkaEpisode {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl std::cmp::PartialEq for PkaEpisode {
-    fn eq(&self, other: &Self) -> bool {
-        FloatOrd(self.number).eq(&FloatOrd(other.number))
-    }
-}
-
-impl std::cmp::Eq for PkaEpisode {}

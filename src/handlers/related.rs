@@ -1,10 +1,10 @@
-use std::collections::HashMap;
+use axum::extract::State;
 
+use crate::app_state::AppState;
 use crate::extractors::AppQuery;
 use crate::models::errors::ErrorResponseBody;
 use crate::models::search::{RelatedMoment, RelatedParams};
 use crate::models::success_response::SuccessResponse;
-use crate::search::{episode_key, SEARCH_INDEX};
 
 const LIMIT: usize = 6;
 
@@ -20,38 +20,29 @@ const LIMIT: usize = 6;
 )]
 pub async fn related_pka_events(
     AppQuery(params): AppQuery<RelatedParams>,
+    State(state): State<AppState>,
 ) -> SuccessResponse<Vec<RelatedMoment>> {
-    let index = SEARCH_INDEX.read().await;
-    let key = episode_key(params.episode);
+    let catalog = state.catalog.get();
 
     // An unknown moment simply has no related moments.
-    let Some(source) = index.events.iter().position(|event| {
-        episode_key(event.episode_number()) == key && event.timestamp() == params.timestamp
-    }) else {
+    let Some(source) = catalog.find_event(params.episode, params.timestamp) else {
         return SuccessResponse::new(Vec::new());
     };
 
-    let episodes = index
-        .episodes
-        .iter()
-        .map(|episode| (episode_key(episode.episode_number), episode))
-        .collect::<HashMap<_, _>>();
-
-    let related = index
+    let related = catalog
         .related
-        .related(&index.events, source, LIMIT)
+        .related(&catalog.events, source, LIMIT)
         .into_iter()
-        .filter_map(|(candidate, shared_terms)| {
-            let event = &index.events[candidate];
-            let episode = episodes.get(&episode_key(event.episode_number()))?;
+        .map(|(candidate, shared_terms)| {
+            let event = &catalog.events[candidate];
 
-            Some(RelatedMoment {
-                episode: (*episode).clone(),
+            RelatedMoment {
+                episode: catalog.episode_of(candidate).summary.clone(),
                 timestamp: event.timestamp(),
                 description: event.description.clone(),
                 length_seconds: event.length_seconds(),
                 shared_terms,
-            })
+            }
         })
         .collect();
 
