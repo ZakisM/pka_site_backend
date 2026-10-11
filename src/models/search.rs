@@ -69,6 +69,10 @@ pub struct PkaEpisodeSearchResult {
     pub upload_date: i64,
     pub title: String,
     pub length_seconds: i32,
+    // Appended, never reordered: the frontend's wasm decoder reads bitcode
+    // Fields positionally.
+    pub video_id: String,
+    pub event_count: i32,
 }
 
 impl Searchable for PkaEpisodeSearchResult {
