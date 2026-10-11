@@ -29,6 +29,32 @@ pub struct SearchIndex {
     pub episodes: Box<[EpisodeSummary]>,
     pub events: Box<[PkaEvent]>,
     pub related: RelatedIndex,
+    /// Indices of the moments worth landing on at random: not the show's
+    /// Bookends or ad reads. Worked out once per refresh.
+    pub random_pool: Box<[u32]>,
+}
+
+// Moments that make a poor random pick.
+const NOT_RANDOM: [&[u8]; 3] = [b"intro", b"outro", b"ad read"];
+
+fn mentions(haystack: &str, needle: &[u8]) -> bool {
+    haystack
+        .as_bytes()
+        .windows(needle.len())
+        .any(|window| window.eq_ignore_ascii_case(needle))
+}
+
+fn random_pool(events: &[PkaEvent]) -> Box<[u32]> {
+    events
+        .iter()
+        .enumerate()
+        .filter(|(_, event)| {
+            !NOT_RANDOM
+                .iter()
+                .any(|word| mentions(event.description(), word))
+        })
+        .map(|(index, _)| index as u32)
+        .collect()
 }
 
 pub static SEARCH_INDEX: LazyLock<RwLock<SearchIndex>> = LazyLock::new(Default::default);
@@ -52,11 +78,13 @@ pub async fn refresh_index(repo: &Repo) -> anyhow::Result<()> {
 
     // Built before taking the lock, so searches never wait on it.
     let related = RelatedIndex::build(&events);
+    let random_pool = random_pool(&events);
 
     *SEARCH_INDEX.write().await = SearchIndex {
         episodes: episodes.into_boxed_slice(),
         events: events.into_boxed_slice(),
         related,
+        random_pool,
     };
 
     Ok(())
@@ -250,6 +278,7 @@ mod tests {
     fn index() -> SearchIndex {
         SearchIndex {
             related: RelatedIndex::default(),
+            random_pool: Box::default(),
             episodes: vec![
                 episode(825.0, "PKA 825 W/ Harley: Redemption Of Wings"),
                 episode(524.1, "Part 1 Confederate Talk"),
@@ -298,6 +327,18 @@ mod tests {
 
         assert!(page.groups.is_empty());
         assert_eq!(page.next_page, None);
+    }
+
+    #[test]
+    fn test_random_pool_skips_bookends_and_ad_reads() {
+        let events = vec![
+            event(1.0, 0, "Woody introduces the show (INTRO)"),
+            event(1.0, 10, "Ad read: Harry's"),
+            event(1.0, 20, "Kyle's prison stories"),
+            event(1.0, 30, "Outro"),
+        ];
+
+        assert_eq!(&*random_pool(&events), &[2]);
     }
 
     #[test]
@@ -367,6 +408,7 @@ mod tests {
             episodes: episodes.into_boxed_slice(),
             events: events.into_boxed_slice(),
             related: RelatedIndex::default(),
+            random_pool: Box::default(),
         };
 
         let first = search(&index, "kyle", SearchSort::Newest, 0);
