@@ -6,32 +6,68 @@
       {
         "name": "event_id: CompactString",
         "ordinal": 0,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pka_event",
+            "name": "event_id"
+          }
+        }
       },
       {
         "name": "episode_number: f32",
         "ordinal": 1,
-        "type_info": "Float"
+        "type_info": "Float",
+        "origin": {
+          "Table": {
+            "table": "pka_event",
+            "name": "episode_number"
+          }
+        }
       },
       {
         "name": "timestamp: i32",
         "ordinal": 2,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pka_event",
+            "name": "timestamp"
+          }
+        }
       },
       {
         "name": "description: CompactString",
         "ordinal": 3,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pka_event",
+            "name": "description"
+          }
+        }
       },
       {
         "name": "length_seconds: i32",
         "ordinal": 4,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pka_event",
+            "name": "length_seconds"
+          }
+        }
       },
       {
         "name": "upload_date: i64",
         "ordinal": 5,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pka_event",
+            "name": "upload_date"
+          }
+        }
       }
     ],
     "parameters": {

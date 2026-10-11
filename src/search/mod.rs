@@ -4,7 +4,6 @@ use std::sync::LazyLock;
 
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
 use anyhow::Context;
-use rayon::prelude::*;
 use tokio::sync::RwLock;
 
 use crate::conduit::sqlite::{pka_episode, pka_event};
@@ -187,11 +186,12 @@ pub fn search(index: &SearchIndex, query: &str, sort: SearchSort, page: usize) -
 
     let mut hits_by_episode: HashMap<i64, Vec<&PkaEvent>> = HashMap::new();
 
+    // One plain pass: the server has a single core, so splitting the scan
+    // Across threads would only add overhead.
     for event in index
         .events
-        .par_iter()
+        .iter()
         .filter(|event| matcher.matches(event.description()))
-        .collect::<Vec<_>>()
     {
         hits_by_episode
             .entry(episode_key(event.episode_number()))

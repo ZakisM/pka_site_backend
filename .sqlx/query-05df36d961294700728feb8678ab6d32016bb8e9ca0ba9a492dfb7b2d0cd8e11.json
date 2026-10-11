@@ -6,32 +6,63 @@
       {
         "name": "episode_number!: f32",
         "ordinal": 0,
-        "type_info": "Float"
+        "type_info": "Float",
+        "origin": {
+          "Table": {
+            "table": "pka_episode",
+            "name": "number"
+          }
+        }
       },
       {
         "name": "upload_date!: i64",
         "ordinal": 1,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pka_episode",
+            "name": "upload_date"
+          }
+        }
       },
       {
         "name": "title!: String",
         "ordinal": 2,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pka_youtube_details",
+            "name": "title"
+          }
+        }
       },
       {
         "name": "length_seconds!: i32",
         "ordinal": 3,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pka_youtube_details",
+            "name": "length_seconds"
+          }
+        }
       },
       {
         "name": "video_id!: String",
         "ordinal": 4,
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pka_youtube_details",
+            "name": "video_id"
+          }
+        }
       },
       {
         "name": "event_count!: i32",
         "ordinal": 5,
-        "type_info": "Integer"
+        "type_info": "Integer",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -40,9 +71,9 @@
     "nullable": [
       false,
       false,
-      true,
-      true,
-      true,
+      false,
+      false,
+      false,
       false
     ]
   },

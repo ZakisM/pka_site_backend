@@ -1,5 +1,5 @@
 use anyhow::Context;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use mimalloc::MiMalloc;
 use sqlx::SqlitePool;
 use std::sync::LazyLock;
