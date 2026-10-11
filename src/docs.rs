@@ -1,5 +1,5 @@
-use utoipa::openapi::OpenApi;
 use utoipa::OpenApi as OpenApiTrait;
+use utoipa::openapi::OpenApi;
 
 use crate::handlers::{episode, event, related, search, static_files};
 use crate::models::errors::ErrorResponseBody;

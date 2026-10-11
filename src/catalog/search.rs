@@ -1,93 +1,17 @@
+//! Finding moments: every moment, and every episode title, containing all the
+//! words of a query, grouped by episode and paged.
+
 use std::cmp::Reverse;
-use std::collections::HashMap;
-use std::sync::LazyLock;
 
 use aho_corasick::{AhoCorasick, AhoCorasickBuilder, MatchKind};
-use anyhow::Context;
-use tokio::sync::RwLock;
 
-use crate::conduit::sqlite::{pka_episode, pka_event};
-use crate::models::pka_event::PkaEvent;
-use crate::models::search::{EpisodeSummary, SearchGroup, SearchHit, SearchPage, SearchSort};
-use crate::Repo;
-
-pub mod related;
-
-use related::RelatedIndex;
+use crate::catalog::Catalog;
+use crate::models::search::{SearchGroup, SearchHit, SearchPage, SearchSort};
 
 pub const GROUPS_PER_PAGE: usize = 12;
 pub const HITS_PER_GROUP: usize = 3;
 // Beyond this a query is a paste, not a search; it also bounds the bitmask.
 const MAX_TERMS: usize = 16;
-
-/// Everything search reads, held in memory and swapped wholesale on refresh so
-/// A request never sees episodes and moments from different snapshots.
-#[derive(Default)]
-pub struct SearchIndex {
-    /// Newest first, which is also the default result order.
-    pub episodes: Box<[EpisodeSummary]>,
-    pub events: Box<[PkaEvent]>,
-    pub related: RelatedIndex,
-    /// Indices of the moments worth landing on at random: not the show's
-    /// Bookends or ad reads. Worked out once per refresh.
-    pub random_pool: Box<[u32]>,
-}
-
-// Moments that make a poor random pick.
-const NOT_RANDOM: [&[u8]; 3] = [b"intro", b"outro", b"ad read"];
-
-fn mentions(haystack: &str, needle: &[u8]) -> bool {
-    haystack
-        .as_bytes()
-        .windows(needle.len())
-        .any(|window| window.eq_ignore_ascii_case(needle))
-}
-
-fn random_pool(events: &[PkaEvent]) -> Box<[u32]> {
-    events
-        .iter()
-        .enumerate()
-        .filter(|(_, event)| {
-            !NOT_RANDOM
-                .iter()
-                .any(|word| mentions(event.description(), word))
-        })
-        .map(|(index, _)| index as u32)
-        .collect()
-}
-
-pub static SEARCH_INDEX: LazyLock<RwLock<SearchIndex>> = LazyLock::new(Default::default);
-
-pub async fn refresh_index(repo: &Repo) -> anyhow::Result<()> {
-    // One read transaction, so a new episode and its moments arrive together.
-    let mut tx = repo
-        .begin()
-        .await
-        .context("Failed to start the search index read")?;
-    let episodes = pka_episode::all_summaries(&mut *tx)
-        .await
-        .context("Failed to load episodes for the search index")?;
-    let events = pka_event::all(&mut *tx)
-        .await
-        .context("Failed to load events for the search index")?;
-
-    tx.commit()
-        .await
-        .context("Failed to finish the search index read")?;
-
-    // Built before taking the lock, so searches never wait on it.
-    let related = RelatedIndex::build(&events);
-    let random_pool = random_pool(&events);
-
-    *SEARCH_INDEX.write().await = SearchIndex {
-        episodes: episodes.into_boxed_slice(),
-        events: events.into_boxed_slice(),
-        related,
-        random_pool,
-    };
-
-    Ok(())
-}
 
 /// Matches text containing every word of the query, case-insensitively.
 struct Matcher {
@@ -172,47 +96,32 @@ impl Matcher {
     }
 }
 
-// Episode numbers can be fractional (524.1); compare them as tenths.
-pub fn episode_key(number: f32) -> i64 {
-    (f64::from(number) * 10.0).round() as i64
-}
-
 /// One page of results, grouped by episode: every episode with a matching
 /// Moment, plus any whose title matches.
-pub fn search(index: &SearchIndex, query: &str, sort: SearchSort, page: usize) -> SearchPage {
+pub fn search(catalog: &Catalog, query: &str, sort: SearchSort, page: usize) -> SearchPage {
     let Some(matcher) = Matcher::new(query) else {
         return SearchPage::default();
     };
 
-    let mut hits_by_episode: HashMap<i64, Vec<&PkaEvent>> = HashMap::new();
-
-    // One plain pass: the server has a single core, so splitting the scan
-    // Across threads would only add overhead.
-    for event in index
-        .events
-        .iter()
-        .filter(|event| matcher.matches(event.description()))
-    {
-        hits_by_episode
-            .entry(episode_key(event.episode_number()))
-            .or_default()
-            .push(event);
-    }
-
-    let mut groups = index
+    // One plain pass, episode by episode, so groups come out newest first and
+    // Their moments in timestamp order. The server has a single core:
+    // Splitting the scan across threads would only add overhead.
+    let mut groups = catalog
         .episodes
         .iter()
         .filter_map(|episode| {
-            let hits = hits_by_episode
-                .remove(&episode_key(episode.episode_number))
-                .unwrap_or_default();
+            let hits = catalog
+                .events_of(episode)
+                .iter()
+                .filter(|event| matcher.matches(event.description()))
+                .collect::<Vec<_>>();
 
-            (!hits.is_empty() || matcher.matches(&episode.title)).then_some((episode, hits))
+            (!hits.is_empty() || matcher.matches(&episode.summary.title)).then_some((episode, hits))
         })
         .collect::<Vec<_>>();
 
     if sort == SearchSort::Matches {
-        // Stable, so equal counts keep the index's newest-first order.
+        // Stable, so equal counts keep newest-first order.
         groups.sort_by_key(|(_, hits)| Reverse(hits.len()));
     }
 
@@ -224,18 +133,14 @@ pub fn search(index: &SearchIndex, query: &str, sort: SearchSort, page: usize) -
         .into_iter()
         .skip(start)
         .take(GROUPS_PER_PAGE)
-        .map(|(episode, mut hits)| {
-            hits.sort_by_key(|event| event.timestamp());
-
-            SearchGroup {
-                episode: episode.clone(),
-                match_count: hits.len(),
-                hits: hits
-                    .into_iter()
-                    .take(HITS_PER_GROUP)
-                    .map(SearchHit::from)
-                    .collect(),
-            }
+        .map(|(episode, hits)| SearchGroup {
+            episode: episode.summary.clone(),
+            match_count: hits.len(),
+            hits: hits
+                .into_iter()
+                .take(HITS_PER_GROUP)
+                .map(SearchHit::from)
+                .collect(),
         })
         .collect();
 
@@ -252,40 +157,16 @@ pub fn search(index: &SearchIndex, query: &str, sort: SearchSort, page: usize) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::catalog::test_data::{catalog, episode, event};
 
-    fn episode(number: f32, title: &str) -> EpisodeSummary {
-        EpisodeSummary {
-            episode_number: number,
-            upload_date: 0,
-            title: title.to_owned(),
-            length_seconds: 14_400,
-            video_id: format!("video{number}"),
-            event_count: 0,
-        }
-    }
-
-    fn event(number: f32, timestamp: i32, description: &str) -> PkaEvent {
-        PkaEvent::new(
-            format!("{number}-{timestamp}").into(),
-            number,
-            timestamp,
-            description.into(),
-            60,
-            0,
-        )
-    }
-
-    fn index() -> SearchIndex {
-        SearchIndex {
-            related: RelatedIndex::default(),
-            random_pool: Box::default(),
-            episodes: vec![
+    fn index() -> Catalog {
+        catalog(
+            vec![
                 episode(825.0, "PKA 825 W/ Harley: Redemption Of Wings"),
                 episode(524.1, "Part 1 Confederate Talk"),
                 episode(400.0, "PKA 400 w/Tucker - Taylor's Bible Story"),
-            ]
-            .into_boxed_slice(),
-            events: vec![
+            ],
+            vec![
                 event(825.0, 1547, "Why Pinhead from Hellraiser is terrifying"),
                 event(825.0, 30, "Taylor reads the sponsors"),
                 event(400.0, 900, "Taylor's bible story"),
@@ -293,9 +174,8 @@ mod tests {
                 event(400.0, 50, "Taylor intro"),
                 event(400.0, 5000, "Taylor outro"),
                 event(524.1, 10, "Confederate talk part one"),
-            ]
-            .into_boxed_slice(),
-        }
+            ],
+        )
     }
 
     #[test]
@@ -309,9 +189,11 @@ mod tests {
     #[test]
     fn test_repeated_and_overlapping_words_still_match() {
         assert!(Matcher::new("kyle kyle").unwrap().matches("Kyle stories"));
-        assert!(Matcher::new("tay taylor")
-            .unwrap()
-            .matches("Taylor's bible story"));
+        assert!(
+            Matcher::new("tay taylor")
+                .unwrap()
+                .matches("Taylor's bible story")
+        );
     }
 
     #[test]
@@ -327,18 +209,6 @@ mod tests {
 
         assert!(page.groups.is_empty());
         assert_eq!(page.next_page, None);
-    }
-
-    #[test]
-    fn test_random_pool_skips_bookends_and_ad_reads() {
-        let events = vec![
-            event(1.0, 0, "Woody introduces the show (INTRO)"),
-            event(1.0, 10, "Ad read: Harry's"),
-            event(1.0, 20, "Kyle's prison stories"),
-            event(1.0, 30, "Outro"),
-        ];
-
-        assert_eq!(&*random_pool(&events), &[2]);
     }
 
     #[test]
@@ -400,16 +270,8 @@ mod tests {
         let events = (0..30)
             .map(|n| event(n as f32, 0, "kyle"))
             .collect::<Vec<_>>();
-        let episodes = (0..30)
-            .rev()
-            .map(|n| episode(n as f32, "x"))
-            .collect::<Vec<_>>();
-        let index = SearchIndex {
-            episodes: episodes.into_boxed_slice(),
-            events: events.into_boxed_slice(),
-            related: RelatedIndex::default(),
-            random_pool: Box::default(),
-        };
+        let episodes = (0..30).map(|n| episode(n as f32, "x")).collect::<Vec<_>>();
+        let index = catalog(episodes, events);
 
         let first = search(&index, "kyle", SearchSort::Newest, 0);
         let last = search(&index, "kyle", SearchSort::Newest, 2);

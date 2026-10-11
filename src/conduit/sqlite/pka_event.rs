@@ -1,9 +1,9 @@
 use compact_str::CompactString;
+use sqlx::SqliteExecutor;
 
 use crate::models::pka_event::PkaEvent;
-use crate::Repo;
 
-pub async fn all<'e>(repo: impl sqlx::SqliteExecutor<'e>) -> Result<Vec<PkaEvent>, sqlx::Error> {
+pub async fn all<'e>(repo: impl SqliteExecutor<'e>) -> Result<Vec<PkaEvent>, sqlx::Error> {
     sqlx::query_as!(
         PkaEvent,
         r#"SELECT
@@ -19,7 +19,7 @@ pub async fn all<'e>(repo: impl sqlx::SqliteExecutor<'e>) -> Result<Vec<PkaEvent
     .await
 }
 
-pub async fn insert(repo: &Repo, event: PkaEvent) -> Result<(), sqlx::Error> {
+pub async fn insert<'e>(repo: impl SqliteExecutor<'e>, event: PkaEvent) -> Result<(), sqlx::Error> {
     let PkaEvent {
         event_id,
         episode_number,

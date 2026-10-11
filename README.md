@@ -34,7 +34,7 @@ To run locally:
     - To run in debug mode: run `cargo run` from project root.
     - To run in release (optimized) mode: run `cargo run --release` from project root.
 13. Rust should now be serving an API from http://0.0.0.0:1234.
-    - OpenAPI schema is available at http://0.0.0.0:1234/openapi.json.
+    - With `EXPOSE_OPENAPI=true`, the OpenAPI schema is available at http://0.0.0.0:1234/openapi.json.
 14. Visit https://pkaindextest.com in your browser. (Firefox will work but for Chrome you will need to import the Self
     Signed SSL certificate manually.)
 

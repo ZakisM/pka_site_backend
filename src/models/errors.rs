@@ -1,32 +1,16 @@
+use axum::Json;
 use axum::extract::rejection::{PathRejection, QueryRejection};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::Json;
 use serde::Serialize;
 use thiserror::Error;
 use tracing::error;
 use utoipa::ToSchema;
 
-use anyhow::Error as AnyhowError;
-
 #[derive(Debug, Error)]
 pub enum ApiError {
     #[error("{message}")]
     WithStatus { code: StatusCode, message: String },
-    #[error(transparent)]
-    QuickXmlDe(#[from] quick_xml::DeError),
-    #[error(transparent)]
-    QuickXmlSe(#[from] quick_xml::SeError),
-    #[error(transparent)]
-    Chrono(#[from] chrono::ParseError),
-    #[error(transparent)]
-    SerdeJson(#[from] serde_json::Error),
-    #[error(transparent)]
-    Reqwest(#[from] reqwest::Error),
-    #[error(transparent)]
-    Utf8(#[from] std::string::FromUtf8Error),
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
 }
 
 impl ApiError {
@@ -44,14 +28,12 @@ impl ApiError {
     fn status_code(&self) -> StatusCode {
         match self {
             ApiError::WithStatus { code, .. } => *code,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 
     fn message(&self) -> String {
         match self {
             ApiError::WithStatus { message, .. } => message.clone(),
-            _ => self.to_string(),
         }
     }
 }
@@ -76,25 +58,6 @@ impl IntoResponse for ApiError {
         };
 
         (status, Json(body)).into_response()
-    }
-}
-
-impl From<sqlx::Error> for ApiError {
-    fn from(err: sqlx::Error) -> Self {
-        error!("Database error: {err}");
-        match err {
-            sqlx::Error::RowNotFound => {
-                ApiError::new("Data could not be found.", StatusCode::NOT_FOUND)
-            }
-            _ => ApiError::new(err.to_string(), StatusCode::INTERNAL_SERVER_ERROR),
-        }
-    }
-}
-
-impl From<AnyhowError> for ApiError {
-    fn from(err: AnyhowError) -> Self {
-        error!("Unhandled internal anyhow error: {err:#}");
-        ApiError::new_internal_error(err.to_string())
     }
 }
 

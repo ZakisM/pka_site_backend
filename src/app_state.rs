@@ -1,14 +1,12 @@
-use std::sync::Arc;
-
-use crate::Repo;
+use crate::catalog::SharedCatalog;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub db: Arc<Repo>,
+    pub catalog: SharedCatalog,
 }
 
 impl AppState {
-    pub fn new(db: Arc<Repo>) -> Self {
-        Self { db }
+    pub fn new(catalog: SharedCatalog) -> Self {
+        Self { catalog }
     }
 }

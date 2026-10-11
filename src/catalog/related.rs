@@ -10,6 +10,7 @@ use std::collections::HashMap;
 
 use compact_str::CompactString;
 
+use crate::catalog::{episode_key, is_filler};
 use crate::models::pka_event::PkaEvent;
 
 // A word in more than this share of moments says nothing about the topic.
@@ -274,6 +275,10 @@ impl RelatedIndex {
         let mut postings: HashMap<CompactString, Vec<usize>> = HashMap::new();
 
         for (index, event) in events.iter().enumerate() {
+            if is_filler(event.description()) {
+                continue;
+            }
+
             for term in terms(event.description()) {
                 postings.entry(term).or_default().push(index);
             }
@@ -301,7 +306,10 @@ impl RelatedIndex {
         source: usize,
         limit: usize,
     ) -> Vec<(usize, Vec<CompactString>)> {
-        let Some(source_event) = events.get(source) else {
+        let Some(source_event) = events
+            .get(source)
+            .filter(|event| !is_filler(event.description()))
+        else {
             return Vec::new();
         };
 
@@ -350,10 +358,14 @@ impl RelatedIndex {
                 }
             }
 
-            let key = (f64::from(events[candidate].episode_number()) * 10.0).round() as i64;
+            let key = episode_key(events[candidate].episode_number());
+            // Ties go to the earlier moment, so the answer doesn't depend on
+            // The order a hash map happens to yield candidates in.
             let replace = best_per_episode
                 .get(&key)
-                .is_none_or(|(_, best, _)| score > *best);
+                .is_none_or(|&(best_candidate, best, _)| {
+                    score > best || (score == best && candidate < best_candidate)
+                });
 
             if replace {
                 best_per_episode.insert(key, (candidate, score, shared));
@@ -457,5 +469,31 @@ mod tests {
 
         assert_eq!(episodes, vec![818.0, 461.0]);
         assert_eq!(related[0].1, vec![CompactString::from("hellraiser")]);
+    }
+
+    #[test]
+    fn test_ties_pick_the_earlier_moment_and_filler_never_matches() {
+        let mut events = vec![
+            event(100.0, 10, "Why the boys still love Hellraiser"),
+            event(200.0, 20, "Woody watches Hellraiser"),
+            event(200.0, 30, "Taylor hates Hellraiser"),
+            event(300.0, 40, "Ad read: Hellraiser"),
+            event(400.0, 50, "Intro and Hellraiser"),
+        ];
+
+        for n in 0..200 {
+            events.push(event(n as f32, n, &format!("filler topic number{n}")));
+        }
+
+        let index = RelatedIndex::build(&events);
+
+        for _ in 0..20 {
+            let related = index.related(&events, 0, 6);
+
+            assert_eq!(related.len(), 1);
+            assert_eq!(events[related[0].0].timestamp(), 20);
+        }
+
+        assert!(index.related(&events, 3, 6).is_empty());
     }
 }

@@ -1,9 +1,12 @@
+use axum::extract::State;
+use axum::response::IntoResponse;
 use rand::seq::IndexedRandom;
 
+use crate::app_state::AppState;
+use crate::handlers::NO_STORE;
 use crate::models::errors::{ApiError, ErrorResponseBody};
 use crate::models::pka_event::RandomPkaEvent;
 use crate::models::success_response::SuccessResponse;
-use crate::search::SEARCH_INDEX;
 
 #[utoipa::path(
     get,
@@ -18,16 +21,16 @@ use crate::search::SEARCH_INDEX;
     ),
     tag = "Events"
 )]
-pub async fn random_pka_event() -> Result<SuccessResponse<RandomPkaEvent>, ApiError> {
-    // A pick from the eligible moments the search index already knows,
-    // Instead of reading every moment from SQLite on each call.
-    let index = SEARCH_INDEX.read().await;
-    let random_event = index
+pub async fn random_pka_event(
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, ApiError> {
+    let catalog = state.catalog.get();
+    let random_event = catalog
         .random_pool
         .choose(&mut rand::rng())
-        .and_then(|&position| index.events.get(position as usize))
+        .and_then(|&position| catalog.events.get(position as usize))
         .map(RandomPkaEvent::from)
         .ok_or_else(|| ApiError::new_internal_error("Couldn't find random events."))?;
 
-    Ok(SuccessResponse::new(random_event))
+    Ok((NO_STORE, SuccessResponse::new(random_event)))
 }

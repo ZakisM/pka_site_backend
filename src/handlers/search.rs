@@ -1,10 +1,13 @@
+use axum::extract::State;
 use axum::http::StatusCode;
+
+use crate::app_state::AppState;
+use crate::catalog::search::search;
 
 use crate::extractors::AppQuery;
 use crate::models::errors::{ApiError, ErrorResponseBody};
 use crate::models::search::{SearchPage, SearchParams};
 use crate::models::success_response::SuccessResponse;
-use crate::search::{search, SEARCH_INDEX};
 
 // Generous for any real search, small enough that a paste can't be expensive.
 const MAX_QUERY_CHARS: usize = 200;
@@ -21,6 +24,7 @@ const MAX_QUERY_CHARS: usize = 200;
 )]
 pub async fn search_pka(
     AppQuery(params): AppQuery<SearchParams>,
+    State(state): State<AppState>,
 ) -> Result<SuccessResponse<SearchPage>, ApiError> {
     if params.q.chars().count() > MAX_QUERY_CHARS {
         return Err(ApiError::new(
@@ -29,10 +33,8 @@ pub async fn search_pka(
         ));
     }
 
-    let index = SEARCH_INDEX.read().await;
-
     Ok(SuccessResponse::new(search(
-        &index,
+        &state.catalog.get(),
         &params.q,
         params.sort,
         params.page,

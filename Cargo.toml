@@ -2,7 +2,7 @@
 name = "pka_site_backend"
 version = "0.1.0"
 authors = ["Zak"]
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -17,14 +17,11 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"]
 rand = "0.10"
 sqlx = { version = "0.9", features = ["runtime-tokio", "macros", "sqlite"] }
 chrono = { version = "0.4", features = ["serde"] }
-float-ord = "0.3"
-reqwest = { version = "0.13", features = ["gzip"] }
+reqwest = { version = "0.13", features = ["gzip", "query"] }
 regex = "1"
 quick-xml = { version = "0.42", features = ["serialize"] }
 iso8601-duration = { version = "0.2.0", features = ["chrono"] }
 dotenvy = "0.15"
-strum = "0.28"
-strum_macros = "0.28"
 mimalloc = "0.1.39"
 compact_str = { version = "0.10", features = ["serde", "sqlx-sqlite"] }
 aho-corasick = "1.1.2"
@@ -32,7 +29,9 @@ tower-http = { version = "0.7", features = ["cors", "compression-br", "compressi
 thiserror = "2.0"
 anyhow = "1"
 envy = "0.4.2"
-utoipa-swagger-ui = { version = "10", features = ["axum"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
 
 [profile.release]
 lto = 'fat'
