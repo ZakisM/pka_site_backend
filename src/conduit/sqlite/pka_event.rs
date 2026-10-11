@@ -5,7 +5,7 @@ use rand::rng;
 use crate::models::pka_event::{PkaEvent, RandomPkaEvent};
 use crate::Repo;
 
-pub async fn all(repo: &Repo) -> Result<Vec<PkaEvent>, sqlx::Error> {
+pub async fn all<'e>(repo: impl sqlx::SqliteExecutor<'e>) -> Result<Vec<PkaEvent>, sqlx::Error> {
     sqlx::query_as!(
         PkaEvent,
         r#"SELECT

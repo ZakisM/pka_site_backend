@@ -34,12 +34,21 @@ pub struct SearchIndex {
 pub static SEARCH_INDEX: LazyLock<RwLock<SearchIndex>> = LazyLock::new(Default::default);
 
 pub async fn refresh_index(repo: &Repo) -> anyhow::Result<()> {
-    let episodes = pka_episode::all_summaries(repo)
+    // One read transaction, so a new episode and its moments arrive together.
+    let mut tx = repo
+        .begin()
+        .await
+        .context("Failed to start the search index read")?;
+    let episodes = pka_episode::all_summaries(&mut *tx)
         .await
         .context("Failed to load episodes for the search index")?;
-    let events = pka_event::all(repo)
+    let events = pka_event::all(&mut *tx)
         .await
         .context("Failed to load events for the search index")?;
+
+    tx.commit()
+        .await
+        .context("Failed to finish the search index read")?;
 
     // Built before taking the lock, so searches never wait on it.
     let related = RelatedIndex::build(&events);
@@ -56,14 +65,36 @@ pub async fn refresh_index(repo: &Repo) -> anyhow::Result<()> {
 /// Matches text containing every word of the query, case-insensitively.
 struct Matcher {
     automaton: AhoCorasick,
+    // Which query word each pattern stands for: a word can have several
+    // Spellings (see `spellings`).
+    pattern_terms: Vec<u32>,
     all_seen: u32,
+}
+
+/// The ways a query word may be written in the archive. Phones and Macs type
+/// Curly quotes by default while most descriptions use straight ones (and a
+/// Few titles the reverse), so "kyle’s" must find "Kyle's" and vice versa.
+fn spellings(term: &str) -> Vec<String> {
+    let straight = term.replace(['‘', '’'], "'").replace(['“', '”'], "\"");
+    let mut out = vec![straight.clone()];
+
+    if straight.contains('\'') {
+        out.push(straight.replace('\'', "’"));
+    }
+
+    if straight.contains('"') {
+        out.push(straight.replace('"', "“"));
+        out.push(straight.replace('"', "”"));
+    }
+
+    out
 }
 
 impl Matcher {
     fn new(query: &str) -> Option<Self> {
         let mut terms = query
             .split_whitespace()
-            .map(str::to_lowercase)
+            .map(|word| spellings(&word.to_lowercase()).swap_remove(0))
             .collect::<Vec<_>>();
 
         // A repeated word would leave its second bit unset forever.
@@ -75,15 +106,26 @@ impl Matcher {
             return None;
         }
 
+        let mut patterns = Vec::new();
+        let mut pattern_terms = Vec::new();
+
+        for (index, term) in terms.iter().enumerate() {
+            for spelling in spellings(term) {
+                patterns.push(spelling);
+                pattern_terms.push(index as u32);
+            }
+        }
+
         // Overlapping, so "tay taylor" sees both words in "Taylor".
         let automaton = AhoCorasickBuilder::new()
             .ascii_case_insensitive(true)
             .match_kind(MatchKind::Standard)
-            .build(&terms)
+            .build(&patterns)
             .ok()?;
 
         Some(Self {
             automaton,
+            pattern_terms,
             all_seen: (1 << terms.len()) - 1,
         })
     }
@@ -92,7 +134,7 @@ impl Matcher {
         let mut seen = 0_u32;
 
         for found in self.automaton.find_overlapping_iter(text) {
-            seen |= 1 << found.pattern().as_u32();
+            seen |= 1 << self.pattern_terms[found.pattern().as_usize()];
 
             if seen == self.all_seen {
                 return true;
@@ -173,7 +215,9 @@ pub fn search(index: &SearchIndex, query: &str, sort: SearchSort, page: usize) -
         total_moments,
         total_episodes,
         groups,
-        next_page: (start + GROUPS_PER_PAGE < total_episodes).then_some(page + 1),
+        // Saturating: a hand-written page number near usize::MAX must not wrap.
+        next_page: (start.saturating_add(GROUPS_PER_PAGE) < total_episodes)
+            .then_some(page.saturating_add(1)),
     }
 }
 
@@ -239,6 +283,21 @@ mod tests {
         assert!(Matcher::new("tay taylor")
             .unwrap()
             .matches("Taylor's bible story"));
+    }
+
+    #[test]
+    fn test_curly_and_straight_apostrophes_match_each_other() {
+        assert!(Matcher::new("kyle’s").unwrap().matches("Kyle's new bike"));
+        assert!(Matcher::new("kyle's").unwrap().matches("Kyle’s new bike"));
+        assert!(!Matcher::new("kyle’s").unwrap().matches("Kyles new bike"));
+    }
+
+    #[test]
+    fn test_huge_page_number_is_empty_not_a_panic() {
+        let page = search(&index(), "taylor", SearchSort::Newest, usize::MAX);
+
+        assert!(page.groups.is_empty());
+        assert_eq!(page.next_page, None);
     }
 
     #[test]

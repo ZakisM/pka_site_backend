@@ -48,7 +48,9 @@ pub async fn random(repo: &Repo) -> Result<f32, sqlx::Error> {
 
 // Every column is NOT NULL in the schema, but SQLite's nullability inference
 // Gives up across the LEFT JOIN, hence the `!` overrides.
-pub async fn all_summaries(repo: &Repo) -> Result<Vec<EpisodeSummary>, sqlx::Error> {
+pub async fn all_summaries<'e>(
+    repo: impl sqlx::SqliteExecutor<'e>,
+) -> Result<Vec<EpisodeSummary>, sqlx::Error> {
     sqlx::query_as!(
         EpisodeSummary,
         r#"SELECT
