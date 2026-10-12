@@ -22,10 +22,27 @@ static TITLE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
         .expect("Failed to create TITLE_REGEX")
 });
 
-/// Adds any episodes uploaded since the newest one stored, oldest first, and
-/// Says how many it added. Stops at the first it can't add (usually a video
-/// Whose timeline isn't up yet), so the next check retries from there.
-pub async fn load_new_episodes(repo: &Repo, yt_api: &YoutubeApi) -> anyhow::Result<usize> {
+/// What a check for new episodes found.
+#[derive(Debug, Default)]
+pub struct NewEpisodes {
+    pub added: usize,
+    /// The next episode is up, but its description has no usable timeline
+    /// Yet.
+    pub awaiting_timeline: bool,
+}
+
+/// Why an episode couldn't be added.
+enum NotAdded {
+    // Nothing in its description reads as a timeline: usually because it
+    // Isn't up yet, and retrying soon won't change that either way.
+    NoTimeline(anyhow::Error),
+    Failed(anyhow::Error),
+}
+
+/// Adds any episodes uploaded since the newest one stored, oldest first.
+/// Stops at the first it can't add (usually a video whose timeline isn't up
+/// Yet), so the next check retries from there.
+pub async fn load_new_episodes(repo: &Repo, yt_api: &YoutubeApi) -> anyhow::Result<NewEpisodes> {
     info!("Checking playlist for missing episodes.");
 
     let stored_episode_number = pka_episode::latest(repo).await?.floor() as usize;
@@ -51,7 +68,7 @@ pub async fn load_new_episodes(repo: &Repo, yt_api: &YoutubeApi) -> anyhow::Resu
     let episodes_missing = latest_episode_number.saturating_sub(stored_episode_number);
 
     if episodes_missing == 0 {
-        return Ok(0);
+        return Ok(NewEpisodes::default());
     }
 
     info!("Fetching {episodes_missing} missing episodes");
@@ -60,7 +77,7 @@ pub async fn load_new_episodes(repo: &Repo, yt_api: &YoutubeApi) -> anyhow::Resu
         .get_latest_uploads(episodes_missing, WOODY_YOUTUBE_UPLOAD_PLAYLIST_ID)
         .await?
         .items;
-    let mut added = 0;
+    let mut found = NewEpisodes::default();
 
     for episode_number in (stored_episode_number + 1)..=latest_episode_number {
         let episode_name = format!("PKA {episode_number}").to_compact_string();
@@ -78,7 +95,7 @@ pub async fn load_new_episodes(repo: &Repo, yt_api: &YoutubeApi) -> anyhow::Resu
 
         info!("Found {episode_name} in playlist. Attempting to extract video details.");
 
-        if let Err(e) = extract_then_save_events(
+        match extract_then_save_events(
             repo,
             yt_api,
             episode_name.clone(),
@@ -87,14 +104,20 @@ pub async fn load_new_episodes(repo: &Repo, yt_api: &YoutubeApi) -> anyhow::Resu
         )
         .await
         {
-            error!("Couldn't add {episode_name}: {e:#}");
-            break;
+            Ok(()) => found.added += 1,
+            Err(NotAdded::NoTimeline(e)) => {
+                warn!("{episode_name} has no usable timeline yet: {e:#}");
+                found.awaiting_timeline = true;
+                break;
+            }
+            Err(NotAdded::Failed(e)) => {
+                error!("Couldn't add {episode_name}: {e:#}");
+                break;
+            }
         }
-
-        added += 1;
     }
 
-    Ok(added)
+    Ok(found)
 }
 
 async fn extract_then_save_events(
@@ -103,17 +126,19 @@ async fn extract_then_save_events(
     name: CompactString,
     number: f32,
     playlist_item: &PlaylistItem,
-) -> anyhow::Result<()> {
+) -> Result<(), NotAdded> {
     let details = yt_api
         .get_video_details(&playlist_item.snippet.resource_id.video_id)
-        .await?;
+        .await
+        .map_err(NotAdded::Failed)?;
 
     let events = extract_pka_episode_events(
         number,
         &details.snippet.description,
         &details.content_details.duration,
         &playlist_item.snippet.published_at,
-    )?;
+    )
+    .map_err(NotAdded::NoTimeline)?;
 
     let pka_ep = PkaEpisode::new(
         number,
@@ -129,7 +154,9 @@ async fn extract_then_save_events(
         details.content_details.duration,
     );
 
-    save_episode(repo, pka_ep, youtube_details, events).await?;
+    save_episode(repo, pka_ep, youtube_details, events)
+        .await
+        .map_err(NotAdded::Failed)?;
 
     info!("Extracted successfully.");
 
