@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM pka_episode WHERE number = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "9bdd3fb533bcefc890bac26f74db29c45deaf7982b22d868aa9d020c5cd4207c"
+}

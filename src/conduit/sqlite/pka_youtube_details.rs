@@ -41,3 +41,35 @@ pub async fn insert<'e>(
 
     Ok(())
 }
+
+pub async fn update_title_and_length<'e>(
+    repo: impl SqliteExecutor<'e>,
+    episode_number: f32,
+    title: &str,
+    length_seconds: i32,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "UPDATE pka_youtube_details SET title = ?, length_seconds = ? WHERE episode_number = ?",
+        title,
+        length_seconds,
+        episode_number
+    )
+    .execute(repo)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn delete_for_episode<'e>(
+    repo: impl SqliteExecutor<'e>,
+    episode_number: f32,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "DELETE FROM pka_youtube_details WHERE episode_number = ?",
+        episode_number
+    )
+    .execute(repo)
+    .await?;
+
+    Ok(())
+}

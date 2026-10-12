@@ -15,7 +15,7 @@ utoipa = "6"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 rand = "0.10"
-sqlx = { version = "0.9", features = ["runtime-tokio", "macros", "sqlite"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "macros", "migrate", "sqlite"] }
 chrono = { version = "0.4", features = ["serde"] }
 reqwest = { version = "0.13", features = ["gzip", "query"] }
 regex = "1"

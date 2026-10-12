@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE pka_youtube_details SET title = ?, length_seconds = ? WHERE episode_number = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "4ee94ba5e2964e5b36b136ba0de33fd6307f157316c0a8196b9ce2fbbb1d3439"
+}

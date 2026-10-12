@@ -1,0 +1,98 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n            e.number         AS \"number!: f32\",\n            e.upload_date    AS \"upload_date!: i64\",\n            y.video_id       AS \"video_id!: CompactString\",\n            y.title          AS \"title!: CompactString\",\n            y.length_seconds AS \"length_seconds!: i32\",\n            e.moments_locked AS \"moments_locked!: bool\",\n            e.missing_since  AS \"missing_since: i64\"\n          FROM pka_episode e\n          INNER JOIN pka_youtube_details y ON y.episode_number = e.number",
+  "describe": {
+    "columns": [
+      {
+        "name": "number!: f32",
+        "ordinal": 0,
+        "type_info": "Float",
+        "origin": {
+          "Table": {
+            "table": "pka_episode",
+            "name": "number"
+          }
+        }
+      },
+      {
+        "name": "upload_date!: i64",
+        "ordinal": 1,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pka_episode",
+            "name": "upload_date"
+          }
+        }
+      },
+      {
+        "name": "video_id!: CompactString",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pka_youtube_details",
+            "name": "video_id"
+          }
+        }
+      },
+      {
+        "name": "title!: CompactString",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "pka_youtube_details",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "length_seconds!: i32",
+        "ordinal": 4,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pka_youtube_details",
+            "name": "length_seconds"
+          }
+        }
+      },
+      {
+        "name": "moments_locked!: bool",
+        "ordinal": 5,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pka_episode",
+            "name": "moments_locked"
+          }
+        }
+      },
+      {
+        "name": "missing_since: i64",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "pka_episode",
+            "name": "missing_since"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "7f794c3aa6dcf613aa01f1fcfff648e0518bc07614e97321eee9eed2c5fae92e"
+}
