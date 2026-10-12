@@ -1,17 +1,26 @@
 //! The one background task: keeping the archive and the catalog current.
 
+mod schedule;
+
 use std::time::Duration;
 
 use tokio::time::{self, Instant, MissedTickBehavior};
 use tracing::{error, info};
 
+use self::schedule::{Job, Now};
 use crate::Repo;
 use crate::catalog::{self, SharedCatalog};
 use crate::updater::pka::load_new_episodes;
 use crate::updater::sync::sync_with_youtube;
 use crate::updater::youtube_api::YoutubeApi;
 
+// How often the schedule is looked at; it costs nothing until a job is due.
+const TICK: Duration = Duration::from_secs(60);
 const CHECK_EVERY: Duration = Duration::from_secs(5 * 60);
+// PKA adds an episode's timeline some hours after uploading it, and every
+// Later episode waits behind it: checking every few minutes until then would
+// Spend quota for nothing.
+const AWAIT_TIMELINE_FOR: Duration = Duration::from_secs(3 * 60 * 60);
 // New episodes are picked up as they're saved; this catches edits made to the
 // Database by hand.
 const REFRESH_AT_LEAST_EVERY: Duration = Duration::from_secs(60 * 60);
@@ -22,37 +31,51 @@ const SYNC_RETRY_AFTER: Duration = Duration::from_secs(60 * 60);
 
 /// Checks YouTube for new episodes every few minutes and syncs every stored
 /// Episode with it daily, rebuilding the catalog when either changed anything,
-/// Or when it's an hour old regardless.
+/// Or when it's an hour old regardless. Both keep to a schedule saved in the
+/// Database (see `schedule`), so restarting never asks YouTube early.
 pub async fn keep_current(repo: Repo, yt_api: YoutubeApi, catalog: SharedCatalog) {
-    let mut ticker = time::interval(CHECK_EVERY);
-    // Startup has just loaded the catalog; the first sync runs straight away.
+    let mut ticker = time::interval(TICK);
+    // Startup has just loaded the catalog.
     let mut refreshed_at = Instant::now();
-    let mut next_sync = Instant::now();
+    let now = Now::read();
+    let mut check = Job::load(&repo, "new_episodes", CHECK_EVERY, AWAIT_TIMELINE_FOR, now).await;
+    let mut sync = Job::load(&repo, "sync", SYNC_RETRY_AFTER, SYNC_EVERY, now).await;
 
     ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);
 
     loop {
         ticker.tick().await;
 
-        let added = match load_new_episodes(&repo, &yt_api).await {
-            Ok(added) => added,
-            Err(e) => {
-                error!("Checking for new episodes failed: {e:#}");
-                0
-            }
-        };
+        let now = Now::read();
+        let mut added = 0;
         let mut synced = false;
 
-        if Instant::now() >= next_sync {
+        if check.is_due(now) && check.claim(&repo, now).await {
+            match load_new_episodes(&repo, &yt_api).await {
+                Ok(found) => {
+                    added = found.added;
+
+                    if found.awaiting_timeline {
+                        info!("Checking for new episodes again in three hours");
+                        check
+                            .reschedule(&repo, Now::read(), AWAIT_TIMELINE_FOR)
+                            .await;
+                    }
+                }
+                Err(e) => error!("Checking for new episodes failed: {e:#}"),
+            }
+        }
+
+        // Read again: the check may have taken a while.
+        let now = Now::read();
+
+        if sync.is_due(now) && sync.claim(&repo, now).await {
             match sync_with_youtube(&repo, &yt_api).await {
                 Ok(summary) => {
                     synced = summary.changed();
-                    next_sync = Instant::now() + SYNC_EVERY;
+                    sync.reschedule(&repo, Now::read(), SYNC_EVERY).await;
                 }
-                Err(e) => {
-                    error!("Syncing with YouTube failed: {e:#}");
-                    next_sync = Instant::now() + SYNC_RETRY_AFTER;
-                }
+                Err(e) => error!("Syncing with YouTube failed: {e:#}"),
             }
         }
 

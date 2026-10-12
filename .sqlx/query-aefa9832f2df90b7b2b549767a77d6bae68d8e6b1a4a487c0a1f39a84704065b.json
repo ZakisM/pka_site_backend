@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE updater_schedule SET next_at = ? WHERE job = ? AND next_at = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "aefa9832f2df90b7b2b549767a77d6bae68d8e6b1a4a487c0a1f39a84704065b"
+}

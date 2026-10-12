@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO updater_schedule (job, next_at) VALUES (?, ?)\n                   ON CONFLICT (job) DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "43f01176b98294e63479c0b6afc19bed28d16c4a4c3b5c72010cc7e4288cebac"
+}

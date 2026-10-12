@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO updater_schedule (job, next_at) VALUES (?, ?)\n           ON CONFLICT (job) DO UPDATE SET next_at = excluded.next_at",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "6514cafbfbd7cfa86f17e35a92d187b5674bc7eb7e01d9525d04cff3d8752e91"
+}
