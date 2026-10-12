@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE pka_episode SET missing_since = ? WHERE ROUND(number * 10) = ROUND(? * 10)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "333d786710f0c296a504856392765163e0cc07d797f041d18fa9b31b5b60e082"
+}

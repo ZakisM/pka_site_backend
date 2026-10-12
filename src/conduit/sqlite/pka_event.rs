@@ -50,7 +50,7 @@ pub async fn delete_for_episode<'e>(
     episode_number: f32,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        "DELETE FROM pka_event WHERE episode_number = ?",
+        "DELETE FROM pka_event WHERE ROUND(episode_number * 10) = ROUND(? * 10)",
         episode_number
     )
     .execute(repo)

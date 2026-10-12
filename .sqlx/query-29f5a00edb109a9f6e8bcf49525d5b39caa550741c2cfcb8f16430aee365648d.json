@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM pka_episode WHERE ROUND(number * 10) = ROUND(? * 10)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "29f5a00edb109a9f6e8bcf49525d5b39caa550741c2cfcb8f16430aee365648d"
+}

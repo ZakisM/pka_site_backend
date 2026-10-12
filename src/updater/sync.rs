@@ -26,6 +26,10 @@ use crate::updater::youtube_api::YoutubeApi;
 // Long enough to ride out a video made private for an edit, or a glitch on
 // YouTube's side, and well inside the 30 days.
 const DELETE_AFTER_MISSING_SECONDS: i64 = 7 * 24 * 60 * 60;
+// More videos than this vanishing in one day isn't PKA tidying up but an
+// Outage, or the channel restricted: believing it would hide the archive and
+// Delete it, community-written moments and all, a week later.
+const MAX_NEWLY_MISSING: usize = 10;
 
 /// What YouTube has now for one video.
 #[derive(Clone, Debug)]
@@ -218,9 +222,26 @@ fn summarise(changes: &[Change]) -> Summary {
     summary
 }
 
+/// Refuses a plan in which too many videos went missing at once.
+fn check_plausible(changes: &[Change]) -> anyhow::Result<()> {
+    let newly_missing = changes
+        .iter()
+        .filter(|change| matches!(change, Change::MissingSince { .. }))
+        .count();
+
+    anyhow::ensure!(
+        newly_missing <= MAX_NEWLY_MISSING,
+        "YouTube is missing {newly_missing} videos at once; treating it as an outage and changing nothing. \
+         If they really are gone, raise MAX_NEWLY_MISSING for one run."
+    );
+
+    Ok(())
+}
+
 /// Checks every stored episode against YouTube and applies what changed. If
-/// YouTube can't be asked about every video, nothing is changed: a missing
-/// answer must never read as a missing video.
+/// YouTube can't be asked about every video, or too many have vanished at
+/// Once, nothing is changed: a missing answer must never read as a missing
+/// Video.
 pub async fn sync_with_youtube(repo: &Repo, yt_api: &YoutubeApi) -> anyhow::Result<Summary> {
     let episodes = pka_episode::sync_states(repo)
         .await
@@ -262,6 +283,9 @@ pub async fn sync_with_youtube(repo: &Repo, yt_api: &YoutubeApi) -> anyhow::Resu
         .collect::<HashMap<_, _>>();
     let now = chrono::Utc::now().timestamp();
     let changes = plan(&episodes, &moments, &videos, now);
+
+    check_plausible(&changes)?;
+
     let summary = summarise(&changes);
 
     if summary.changed() {
@@ -415,6 +439,18 @@ mod tests {
             plan_one(&missing, Vec::new(), None, NOW),
             vec![Change::Delete { number: 0.0 }]
         );
+    }
+
+    #[test]
+    fn test_many_videos_vanishing_at_once_reads_as_an_outage() {
+        let episodes = (0..12)
+            .map(|number| episode(number as f32))
+            .collect::<Vec<_>>();
+        let changes = plan(&episodes, &HashMap::new(), &HashMap::new(), NOW);
+
+        assert_eq!(changes.len(), 12);
+        assert!(check_plausible(&changes).is_err());
+        assert!(check_plausible(&changes[..MAX_NEWLY_MISSING]).is_ok());
     }
 
     #[test]

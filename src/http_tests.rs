@@ -642,3 +642,55 @@ async fn test_a_sync_updates_episodes_hides_missing_ones_and_deletes_them() {
 
     assert_eq!(left, 0);
 }
+
+#[tokio::test]
+async fn test_a_sync_finds_a_part_typed_in_by_hand() {
+    use crate::updater::sync::{Change, apply};
+
+    let repo = database().await;
+
+    // As a part added with plain SQL: 524.1 as a double, not the f32 the
+    // App binds.
+    sqlx::raw_sql(
+        "INSERT INTO pka_episode (number, name, youtube_link, upload_date) VALUES (300.1, 'PKA 300.1', 'v3001', 0);
+         INSERT INTO pka_youtube_details (video_id, episode_number, title, length_seconds) VALUES ('v3001', 300.1, 'Old', 60);
+         INSERT INTO pka_event (event_id, episode_number, timestamp, description, length_seconds, upload_date) VALUES ('300.1-0', 300.1, 0, 'Moment', 60, 0);",
+    )
+    .execute(&repo)
+    .await
+    .unwrap();
+
+    apply(
+        &repo,
+        vec![Change::Details {
+            number: 300.1,
+            title: "New".into(),
+            length_seconds: 61,
+        }],
+    )
+    .await
+    .unwrap();
+
+    let title: String =
+        sqlx::query_scalar("SELECT title FROM pka_youtube_details WHERE video_id = 'v3001'")
+            .fetch_one(&repo)
+            .await
+            .unwrap();
+
+    assert_eq!(title, "New");
+
+    apply(&repo, vec![Change::Delete { number: 300.1 }])
+        .await
+        .unwrap();
+
+    let left: i64 = sqlx::query_scalar(
+        "SELECT (SELECT COUNT(*) FROM pka_episode WHERE number > 300 AND number < 301)
+              + (SELECT COUNT(*) FROM pka_event WHERE episode_number > 300 AND episode_number < 301)
+              + (SELECT COUNT(*) FROM pka_youtube_details WHERE episode_number > 300 AND episode_number < 301)",
+    )
+    .fetch_one(&repo)
+    .await
+    .unwrap();
+
+    assert_eq!(left, 0);
+}
