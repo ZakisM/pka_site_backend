@@ -9,7 +9,6 @@ use crate::catalog::Catalog;
 use crate::models::search::{SearchGroup, SearchHit, SearchPage, SearchSort};
 
 pub const GROUPS_PER_PAGE: usize = 12;
-pub const HITS_PER_GROUP: usize = 3;
 // Beyond this a query is a paste, not a search; it also bounds the bitmask.
 const MAX_TERMS: usize = 16;
 
@@ -136,11 +135,9 @@ pub fn search(catalog: &Catalog, query: &str, sort: SearchSort, page: usize) -> 
         .map(|(episode, hits)| SearchGroup {
             episode: episode.summary.clone(),
             match_count: hits.len(),
-            hits: hits
-                .into_iter()
-                .take(HITS_PER_GROUP)
-                .map(SearchHit::from)
-                .collect(),
+            // Every match: someone searching reads them to find the one they
+            // Mean, and a page of twelve episodes stays small however broad.
+            hits: hits.into_iter().map(SearchHit::from).collect(),
         })
         .collect();
 
@@ -220,7 +217,7 @@ mod tests {
     }
 
     #[test]
-    fn test_groups_by_episode_newest_first_with_hits_in_order() {
+    fn test_groups_by_episode_newest_first_with_every_hit_in_order() {
         let page = search(&index(), "taylor", SearchSort::Newest, 0);
 
         assert_eq!(page.total_moments, 5);
@@ -230,14 +227,13 @@ mod tests {
         let older = &page.groups[1];
 
         assert_eq!(older.match_count, 4);
-        assert_eq!(older.hits.len(), HITS_PER_GROUP);
         assert_eq!(
             older
                 .hits
                 .iter()
                 .map(|hit| hit.timestamp)
                 .collect::<Vec<_>>(),
-            vec![50, 100, 900]
+            vec![50, 100, 900, 5000]
         );
     }
 

@@ -60,8 +60,8 @@ impl From<&PkaEvent> for SearchHit {
     }
 }
 
-/// One episode in the results: its first few matching moments in order, and
-/// How many matched in total.
+/// One episode in the results: every matching moment in order, and how many
+/// There are.
 #[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchGroup {
