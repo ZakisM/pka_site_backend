@@ -1,5 +1,5 @@
 use axum::extract::State;
-use axum::http::{HeaderValue, StatusCode, header};
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
 use compact_str::CompactString;
 
@@ -23,15 +23,29 @@ fn not_found() -> ApiError {
     ),
     tag = "Episodes"
 )]
-pub async fn all_pka_episodes(State(state): State<AppState>) -> Response {
-    (
-        [(
-            header::CONTENT_TYPE,
-            HeaderValue::from_static("application/json"),
-        )],
-        state.catalog.get().episodes_json.clone(),
+pub async fn all_pka_episodes(State(state): State<AppState>, request: HeaderMap) -> Response {
+    // Precompressed once per snapshot, at a level per-request compression
+    // couldn't afford; the compression layer passes an encoded body through.
+    let (encoding, body) = state.catalog.get().episodes_json.negotiate(&request);
+    let mut response = (
+        [
+            (
+                header::CONTENT_TYPE,
+                HeaderValue::from_static("application/json"),
+            ),
+            (header::VARY, HeaderValue::from_static("accept-encoding")),
+        ],
+        body,
     )
-        .into_response()
+        .into_response();
+
+    if let Some(encoding) = encoding {
+        response
+            .headers_mut()
+            .insert(header::CONTENT_ENCODING, encoding);
+    }
+
+    response
 }
 
 #[utoipa::path(

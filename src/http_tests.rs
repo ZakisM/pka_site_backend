@@ -113,9 +113,23 @@ async fn app(repo: &Repo) -> (Router, SharedCatalog) {
 }
 
 async fn get(app: &Router, uri: &str) -> (StatusCode, HeaderMap, Bytes) {
+    get_with(app, uri, &[]).await
+}
+
+async fn get_with(
+    app: &Router,
+    uri: &str,
+    headers: &[(header::HeaderName, &str)],
+) -> (StatusCode, HeaderMap, Bytes) {
+    let mut request = Request::get(uri);
+
+    for (name, value) in headers {
+        request = request.header(name, *value);
+    }
+
     let response = app
         .clone()
-        .oneshot(Request::get(uri).body(Body::empty()).unwrap())
+        .oneshot(request.body(Body::empty()).unwrap())
         .await
         .unwrap();
     let status = response.status();
@@ -131,6 +145,8 @@ async fn get_json(app: &Router, uri: &str) -> (StatusCode, HeaderMap, Value) {
     (status, headers, serde_json::from_slice(&body).unwrap())
 }
 
+const API_CACHE: &str = "public, max-age=300, stale-while-revalidate=86400";
+
 fn cache_control(headers: &HeaderMap) -> Option<&str> {
     headers
         .get(header::CACHE_CONTROL)
@@ -144,7 +160,7 @@ async fn test_episode_list_is_newest_first_and_cacheable() {
 
     assert_eq!(status, StatusCode::OK);
     assert_eq!(headers[header::CONTENT_TYPE], "application/json");
-    assert_eq!(cache_control(&headers), Some("public, max-age=300"));
+    assert_eq!(cache_control(&headers), Some(API_CACHE));
     assert_eq!(
         body["data"][0],
         json!({
@@ -251,7 +267,7 @@ async fn test_search_groups_moments_by_episode() {
     let (status, headers, body) = get_json(&app, "/api/v1/search?q=taylor").await;
 
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(cache_control(&headers), Some("public, max-age=300"));
+    assert_eq!(cache_control(&headers), Some(API_CACHE));
     assert_eq!(body["data"]["totalMoments"], 3);
     assert_eq!(body["data"]["totalEpisodes"], 3);
     assert_eq!(body["data"]["groups"][0]["episode"]["episodeNumber"], 825.0);
@@ -425,4 +441,97 @@ async fn test_a_failed_save_leaves_nothing_behind() {
             .unwrap();
 
     assert_eq!((episodes, events), (0, 0));
+}
+
+#[tokio::test]
+async fn test_unchanged_answers_revalidate_as_304() {
+    let repo = database().await;
+    let (app, catalog) = app(&repo).await;
+
+    for uri in [
+        "/api/v1/episodes",
+        "/api/v1/episodes/825",
+        "/api/v1/search?q=kyle",
+        "/api/v1/events/related?episode=825&timestamp=600",
+    ] {
+        let (status, headers, _) = get(&app, uri).await;
+        let etag = headers[header::ETAG].to_str().unwrap().to_owned();
+
+        assert_eq!(status, StatusCode::OK, "{uri}");
+        assert!(etag.starts_with("W/\""), "{uri}: {etag}");
+
+        let (status, headers, body) = get_with(&app, uri, &[(header::IF_NONE_MATCH, &etag)]).await;
+
+        assert_eq!(status, StatusCode::NOT_MODIFIED, "{uri}");
+        assert!(body.is_empty(), "{uri}");
+        assert_eq!(headers[header::ETAG], etag.as_str());
+        assert_eq!(cache_control(&headers), Some(API_CACHE));
+    }
+
+    // A new episode is a new version: the old tag no longer matches.
+    let (_, headers, _) = get(&app, "/api/v1/episodes").await;
+    let before = headers[header::ETAG].to_str().unwrap().to_owned();
+
+    add_episode(&repo, 826.0, "PKA 826", &[(15, "Kyle's new bike")]).await;
+    catalog::refresh(&repo, &catalog).await.unwrap();
+
+    let (status, headers, _) = get_with(
+        &app,
+        "/api/v1/episodes",
+        &[(header::IF_NONE_MATCH, &before)],
+    )
+    .await;
+
+    assert_eq!(status, StatusCode::OK);
+    assert_ne!(headers[header::ETAG], before.as_str());
+}
+
+#[tokio::test]
+async fn test_random_picks_and_errors_are_never_revalidated() {
+    let (app, _) = app(&database().await).await;
+
+    for uri in ["/api/v1/events/random", "/api/v1/episodes/random"] {
+        let (status, headers, _) = get_with(&app, uri, &[(header::IF_NONE_MATCH, "*")]).await;
+
+        assert_eq!(status, StatusCode::OK, "{uri}");
+        assert!(headers.get(header::ETAG).is_none(), "{uri}");
+    }
+
+    let (status, headers, _) = get(&app, "/api/v1/episodes/9999").await;
+
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert!(headers.get(header::ETAG).is_none());
+}
+
+#[tokio::test]
+async fn test_episode_list_is_served_precompressed() {
+    use std::io::Read;
+
+    let (app, _) = app(&database().await).await;
+    let (_, _, plain) = get(&app, "/api/v1/episodes").await;
+    let (status, headers, compressed) = get_with(
+        &app,
+        "/api/v1/episodes",
+        &[(header::ACCEPT_ENCODING, "gzip, deflate, br")],
+    )
+    .await;
+    let mut decoded = Vec::new();
+
+    brotli::Decompressor::new(&compressed[..], 4096)
+        .read_to_end(&mut decoded)
+        .unwrap();
+
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(headers[header::CONTENT_ENCODING], "br");
+    assert_eq!(headers[header::VARY], "accept-encoding");
+    assert_eq!(decoded, plain.to_vec());
+
+    let (_, headers, _) = get_with(
+        &app,
+        "/api/v1/episodes",
+        &[(header::ACCEPT_ENCODING, "gzip")],
+    )
+    .await;
+
+    assert_eq!(headers[header::CONTENT_ENCODING], "gzip");
 }

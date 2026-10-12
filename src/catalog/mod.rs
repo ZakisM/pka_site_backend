@@ -3,9 +3,10 @@
 //! and never see an episode from one snapshot with moments from another.
 
 use std::collections::HashMap;
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::ops::Range;
-use std::sync::{Arc, PoisonError, RwLock};
-use std::time::Instant;
+use std::sync::{Arc, LazyLock, PoisonError, RwLock};
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::Context;
 use axum::body::Bytes;
@@ -21,10 +22,12 @@ use crate::models::pka_youtube_details::PkaYoutubeDetails;
 use crate::models::search::EpisodeSummary;
 use crate::models::success_response::SuccessResponse;
 
+mod encoded;
 pub mod related;
 pub mod search;
 mod sitemap;
 
+pub use encoded::Encoded;
 use related::RelatedIndex;
 
 pub struct CatalogEpisode {
@@ -47,8 +50,41 @@ pub struct Catalog {
     pub random_pool: Box<[u32]>,
     /// The episode list and the sitemap are the same for every request, so
     /// They are rendered once per snapshot rather than once per request.
-    pub episodes_json: Bytes,
+    pub episodes_json: Encoded,
     pub sitemap_xml: Bytes,
+    /// Changes whenever anything the API answers with could: the ETag of
+    /// every answer drawn from this snapshot.
+    pub version: u64,
+}
+
+// When this process started. Part of every version, so a deploy that changes
+// How the same data is rendered can't be answered "not modified" from a
+// Browser's copy in the old shape.
+static STARTED: LazyLock<u128> = LazyLock::new(|| {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |since| since.as_nanos())
+});
+
+fn fingerprint(episodes: &[CatalogEpisode], list: &[u8], events: &[PkaEvent]) -> u64 {
+    let mut hasher = DefaultHasher::new();
+
+    STARTED.hash(&mut hasher);
+    list.hash(&mut hasher);
+
+    // The list covers titles, dates and counts; episode pages also show these.
+    for episode in episodes {
+        episode.episode.name.hash(&mut hasher);
+    }
+
+    for event in events {
+        event.episode_number().to_bits().hash(&mut hasher);
+        event.timestamp().hash(&mut hasher);
+        event.description().hash(&mut hasher);
+        event.length_seconds().hash(&mut hasher);
+    }
+
+    hasher.finish()
 }
 
 // Episode numbers can be fractional (524.1); compare them as tenths.
@@ -141,14 +177,17 @@ impl Catalog {
         let episodes_json = serde_json::to_vec(&SuccessResponse::new(summaries))
             .context("Failed to render the episode list")?;
         let sitemap_xml = sitemap::render(&catalog_episodes)?;
+        let version = fingerprint(&catalog_episodes, &episodes_json, &all_events);
 
         Ok(Self {
             related: RelatedIndex::build(&all_events),
             random_pool: random_pool(&all_events),
             episodes: catalog_episodes.into_boxed_slice(),
             events: all_events.into_boxed_slice(),
-            episodes_json: episodes_json.into(),
+            episodes_json: Encoded::new(episodes_json)
+                .context("Failed to compress the episode list")?,
             sitemap_xml: sitemap_xml.into(),
+            version,
         })
     }
 

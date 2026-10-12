@@ -1,6 +1,7 @@
 mod docs;
 mod episodes;
 mod events;
+mod revalidate;
 mod search;
 mod static_assets;
 
@@ -16,16 +17,20 @@ use crate::app_state::AppState;
 use crate::models::errors::ApiError;
 
 // The catalog changes when an episode is added, a few times a week, so a
-// Browser (or a proxy in front) may reuse an answer for a few minutes.
-const API_CACHE: HeaderValue = HeaderValue::from_static("public, max-age=300");
+// Browser (or a proxy in front) may reuse an answer for a few minutes, and for
+// a day after may show its copy at once while checking it in the background:
+// on a slow connection the page doesn't wait on an answer that rarely changes.
+// The check is cheap, an empty 304 while nothing has (see `revalidate`).
+const API_CACHE: HeaderValue =
+    HeaderValue::from_static("public, max-age=300, stale-while-revalidate=86400");
 
 /// The whole HTTP application: every route, with CORS, compression and
 /// Caching headers.
 pub fn app(state: AppState, expose_openapi: bool) -> Router {
     let api = Router::new()
-        .nest("/episodes", episodes::router())
-        .nest("/events", events::router())
-        .nest("/search", search::router())
+        .nest("/episodes", episodes::router(&state))
+        .nest("/events", events::router(&state))
+        .nest("/search", search::router(&state))
         .layer(map_response(default_cache_control));
 
     let mut router = Router::new()
