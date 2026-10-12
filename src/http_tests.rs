@@ -21,7 +21,8 @@ use crate::models::pka_youtube_details::PkaYoutubeDetails;
 use crate::routes;
 use crate::updater::pka::save_episode;
 
-const SCHEMA: [&str; 4] = [
+// The schema as databases were created before the server ran migrations.
+const LEGACY_SCHEMA: [&str; 4] = [
     include_str!("../migrations/20200301124334_pka_episode.sql"),
     include_str!("../migrations/20200301130012_pka_guest.sql"),
     include_str!("../migrations/20200314142852_pka_event.sql"),
@@ -62,20 +63,23 @@ async fn add_episode(repo: &Repo, number: f32, title: &str, moments: &[(i32, &st
     .expect("Failed to save a test episode");
 }
 
-async fn database() -> Repo {
+async fn memory_pool() -> Repo {
     // One connection that never closes: each connection to `:memory:` is a
     // Database of its own.
-    let repo = SqlitePoolOptions::new()
+    SqlitePoolOptions::new()
         .max_connections(1)
         .idle_timeout(None)
         .max_lifetime(None)
         .connect_with(SqliteConnectOptions::from_str("sqlite::memory:").unwrap())
         .await
-        .unwrap();
+        .unwrap()
+}
 
-    for sql in SCHEMA {
-        sqlx::raw_sql(sql).execute(&repo).await.unwrap();
-    }
+// Built by the migrations the server runs at startup.
+async fn database() -> Repo {
+    let repo = memory_pool().await;
+
+    sqlx::migrate!().run(&repo).await.unwrap();
 
     add_episode(
         &repo,
@@ -534,4 +538,107 @@ async fn test_episode_list_is_served_precompressed() {
     .await;
 
     assert_eq!(headers[header::CONTENT_ENCODING], "gzip");
+}
+
+#[tokio::test]
+async fn test_migrations_upgrade_a_database_made_before_them() {
+    let repo = memory_pool().await;
+
+    for sql in LEGACY_SCHEMA {
+        sqlx::raw_sql(sql).execute(&repo).await.unwrap();
+    }
+
+    for number in [134.0_f32, 524.1, 500.0] {
+        sqlx::query("INSERT INTO pka_episode (number, name, youtube_link, upload_date) VALUES (?, 'PKA', 'link', 0)")
+            .bind(number)
+            .execute(&repo)
+            .await
+            .unwrap();
+    }
+
+    sqlx::migrate!().run(&repo).await.unwrap();
+
+    let locked: Vec<(f32, bool)> =
+        sqlx::query_as("SELECT number, moments_locked FROM pka_episode ORDER BY number")
+            .fetch_all(&repo)
+            .await
+            .unwrap();
+
+    assert_eq!(locked, vec![(134.0, true), (500.0, false), (524.1, true)]);
+
+    // And a second start finds nothing left to do.
+    sqlx::migrate!().run(&repo).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_a_sync_updates_episodes_hides_missing_ones_and_deletes_them() {
+    use crate::updater::sync::{Change, apply};
+
+    let repo = database().await;
+
+    apply(
+        &repo,
+        vec![
+            Change::Details {
+                number: 825.0,
+                title: "PKA 825 W/ Harley: Renamed".into(),
+                length_seconds: 11_000,
+            },
+            Change::Moments {
+                number: 400.0,
+                moments: vec![PkaEvent::new(
+                    "400-95".into(),
+                    400.0,
+                    95,
+                    "Kyle and Taylor argue again".into(),
+                    60,
+                    UPLOADED,
+                )],
+            },
+            Change::MissingSince {
+                number: 524.1,
+                since: UPLOADED,
+            },
+        ],
+    )
+    .await
+    .unwrap();
+
+    let (app, catalog) = app(&repo).await;
+    let (_, _, list) = get_json(&app, "/api/v1/episodes").await;
+    let numbers = list["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|episode| episode["episodeNumber"].as_f64().unwrap())
+        .collect::<Vec<_>>();
+
+    // Missing from YouTube: hidden, not yet deleted.
+    assert_eq!(numbers, vec![825.0, 400.0]);
+    assert_eq!(list["data"][0]["title"], "PKA 825 W/ Harley: Renamed");
+    assert_eq!(list["data"][0]["lengthSeconds"], 11_000);
+
+    let (_, _, episode) = get_json(&app, "/api/v1/episodes/400").await;
+
+    assert_eq!(
+        episode["data"]["events"][0]["description"],
+        "Kyle and Taylor argue again"
+    );
+    assert_eq!(episode["data"]["events"].as_array().unwrap().len(), 1);
+
+    apply(&repo, vec![Change::Delete { number: 524.1 }])
+        .await
+        .unwrap();
+    catalog::refresh(&repo, &catalog).await.unwrap();
+
+    let left: i64 = sqlx::query_scalar(
+        "SELECT (SELECT COUNT(*) FROM pka_episode WHERE number > 524 AND number < 525)
+              + (SELECT COUNT(*) FROM pka_event WHERE episode_number > 524 AND episode_number < 525)
+              + (SELECT COUNT(*) FROM pka_youtube_details WHERE episode_number > 524 AND episode_number < 525)",
+    )
+    .fetch_one(&repo)
+    .await
+    .unwrap();
+
+    assert_eq!(left, 0);
 }

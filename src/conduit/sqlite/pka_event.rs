@@ -44,3 +44,17 @@ pub async fn insert<'e>(repo: impl SqliteExecutor<'e>, event: PkaEvent) -> Resul
 
     Ok(())
 }
+
+pub async fn delete_for_episode<'e>(
+    repo: impl SqliteExecutor<'e>,
+    episode_number: f32,
+) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "DELETE FROM pka_event WHERE episode_number = ?",
+        episode_number
+    )
+    .execute(repo)
+    .await?;
+
+    Ok(())
+}

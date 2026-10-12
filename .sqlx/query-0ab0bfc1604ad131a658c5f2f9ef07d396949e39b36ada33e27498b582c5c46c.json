@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE pka_episode SET missing_since = ? WHERE number = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "0ab0bfc1604ad131a658c5f2f9ef07d396949e39b36ada33e27498b582c5c46c"
+}

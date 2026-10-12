@@ -72,6 +72,25 @@ impl YoutubeApi {
         .await
     }
 
+    /// Every listed video that YouTube still has, 50 to a request. Fails
+    /// whole if any request fails: a missing answer is not a missing video.
+    pub async fn get_videos(&self, video_ids: &[&str]) -> anyhow::Result<Vec<VideosItem>> {
+        let mut videos = Vec::with_capacity(video_ids.len());
+
+        for chunk in video_ids.chunks(50) {
+            let response: VideosResponse = self
+                .get(
+                    "videos",
+                    &[("part", "contentDetails,snippet"), ("id", &chunk.join(","))],
+                )
+                .await?;
+
+            videos.extend(response.items);
+        }
+
+        Ok(videos)
+    }
+
     pub async fn get_video_details(&self, video_id: &str) -> anyhow::Result<VideosItem> {
         let response: VideosResponse = self
             .get(

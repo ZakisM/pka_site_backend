@@ -3,7 +3,7 @@ use serde::Serialize;
 use sqlx::FromRow;
 use utoipa::ToSchema;
 
-#[derive(Clone, Debug, Serialize, FromRow, ToSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, FromRow, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PkaEvent {
     #[serde(skip_serializing)]
