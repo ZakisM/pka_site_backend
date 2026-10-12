@@ -77,7 +77,7 @@ pub async fn set_missing_since<'e>(
     since: Option<i64>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        "UPDATE pka_episode SET missing_since = ? WHERE number = ?",
+        "UPDATE pka_episode SET missing_since = ? WHERE ROUND(number * 10) = ROUND(? * 10)",
         since,
         number
     )
@@ -87,11 +87,17 @@ pub async fn set_missing_since<'e>(
     Ok(())
 }
 
+// Episode numbers are matched as tenths (see catalog::episode_key): a part
+// typed in by hand as 524.1 isn't stored as the float an f32 binds as.
+
 /// The episode row only: its moments and video details go first.
 pub async fn delete<'e>(repo: impl SqliteExecutor<'e>, number: f32) -> Result<(), sqlx::Error> {
-    sqlx::query!("DELETE FROM pka_episode WHERE number = ?", number)
-        .execute(repo)
-        .await?;
+    sqlx::query!(
+        "DELETE FROM pka_episode WHERE ROUND(number * 10) = ROUND(? * 10)",
+        number
+    )
+    .execute(repo)
+    .await?;
 
     Ok(())
 }

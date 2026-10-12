@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM pka_youtube_details WHERE ROUND(episode_number * 10) = ROUND(? * 10)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "510e4e4a46f7acb0f78558784488ba1f781e466455f10364f0fc5b1044df45b0"
+}

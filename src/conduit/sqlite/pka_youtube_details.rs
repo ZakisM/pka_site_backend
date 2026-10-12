@@ -49,7 +49,8 @@ pub async fn update_title_and_length<'e>(
     length_seconds: i32,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        "UPDATE pka_youtube_details SET title = ?, length_seconds = ? WHERE episode_number = ?",
+        "UPDATE pka_youtube_details SET title = ?, length_seconds = ?
+         WHERE ROUND(episode_number * 10) = ROUND(? * 10)",
         title,
         length_seconds,
         episode_number
@@ -65,7 +66,7 @@ pub async fn delete_for_episode<'e>(
     episode_number: f32,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        "DELETE FROM pka_youtube_details WHERE episode_number = ?",
+        "DELETE FROM pka_youtube_details WHERE ROUND(episode_number * 10) = ROUND(? * 10)",
         episode_number
     )
     .execute(repo)
