@@ -4,10 +4,10 @@ updates:
     directory: /
     schedule:
       interval: daily
-    # A release has to be a few days old first, so one that is pulled for being
+    # A release has to be a week old first, so one that is pulled for being
     # broken or malicious never reaches a pull request.
     cooldown:
-      default-days: 3
+      default-days: 7
     groups:
       # At most one pull request a day for minor and patch updates; majors each
       # get their own, and aren't merged automatically (dependabot-auto-merge.yml).
@@ -20,7 +20,7 @@ updates:
     schedule:
       interval: daily
     cooldown:
-      default-days: 3
+      default-days: 7
     groups:
       actions:
         patterns: ["*"]
