@@ -6,7 +6,6 @@ on:
       - 'README.md'
       - 'nginx.conf'
       - 'pka_db.sqlite3'
-      - '.github/**'
     branches: [ master ]
 
 jobs:
