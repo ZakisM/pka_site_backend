@@ -56,7 +56,7 @@ jobs:
           persist-credentials: false
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5.5.1
+        uses: docker/metadata-action@v6.2.0
         with:
           images: zakism/pka-index-backend
           tags: type=ref,event=pr
