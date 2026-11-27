@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -50,7 +50,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Nothing pushes, so keep the token out of .git/config.
           persist-credentials: false
