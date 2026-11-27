@@ -41,7 +41,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5.5.1
+        uses: docker/metadata-action@v6.2.0
         with:
           images: zakism/pka-index-backend
           # Only :master, whatever started the run (a scheduled run would add :nightly).
