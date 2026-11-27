@@ -47,7 +47,7 @@ jobs:
           # Only :master, whatever started the run (a scheduled run would add :nightly).
           tags: type=ref,event=branch
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5.1.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: .
           push: true

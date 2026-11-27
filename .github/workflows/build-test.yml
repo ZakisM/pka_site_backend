@@ -61,7 +61,7 @@ jobs:
           images: zakism/pka-index-backend
           tags: type=ref,event=pr
       - name: Build the image
-        uses: docker/build-push-action@v5.1.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: .
           push: false
