@@ -6,10 +6,23 @@ on:
       - 'README.md'
       - 'nginx.conf'
     branches: [ master ]
+  # Dependabot's pull requests are merged by GitHub Actions' own token, and a
+  # push made with that token starts no workflows, so they'd never publish.
+  # Rebuild weekly to pick them up, or run it by hand to publish one sooner.
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+# One publish at a time, so an older build can't overwrite a newer one.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
 
 jobs:
   build-and-push:
     name: Build and Push pka-index-backend
+    # A manual run can be started from any branch; only master publishes.
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -31,6 +44,8 @@ jobs:
         uses: docker/metadata-action@v5.5.1
         with:
           images: zakism/pka-index-backend
+          # Only :master, whatever started the run (a scheduled run would add :nightly).
+          tags: type=ref,event=branch
       - name: Build and push Docker image
         uses: docker/build-push-action@v5.1.0
         with:

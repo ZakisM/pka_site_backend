@@ -6,7 +6,6 @@ on:
       - 'README.md'
       - 'nginx.conf'
       - 'pka_db.sqlite3'
-      - '.github/**'
     branches: [ master ]
 
 jobs:
@@ -39,3 +38,32 @@ jobs:
 
       - name: Run tests
         run: cargo test --verbose
+
+  # The image is only published from master (deploy.yml), so build it here too,
+  # with the same actions: a broken Dockerfile, or an update to one of those
+  # actions that breaks the build, fails the pull request instead of the deploy.
+  image:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Nothing pushes, so keep the token out of .git/config.
+          persist-credentials: false
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5.5.1
+        with:
+          images: zakism/pka-index-backend
+          tags: type=ref,event=pr
+      - name: Build the image
+        uses: docker/build-push-action@v5.1.0
+        with:
+          context: .
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
