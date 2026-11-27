@@ -29,7 +29,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Download Sqlite3
         run: sudo apt-get install libsqlite3-dev
       - name: Run tests
