@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: daily
+    # A release has to be a week old first, so one that is pulled for being
+    # broken or malicious never reaches a pull request.
+    cooldown:
+      default-days: 7
+    groups:
+      # At most one pull request a day for minor and patch updates; majors each
+      # get their own, and aren't merged automatically (dependabot-auto-merge.yml).
+      dependencies:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: [minor, patch]
