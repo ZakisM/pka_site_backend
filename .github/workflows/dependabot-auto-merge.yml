@@ -1,9 +1,16 @@
 name: Dependabot auto-merge
 
 # Turns on auto-merge for Dependabot's minor and patch updates. GitHub merges
-# them once the required checks (Build and Test) pass; a failing check leaves
-# the pull request open. Major updates are left for a person to review.
-on: pull_request
+# them once the required checks (Build and Test) pass; a failing check leaves the
+# pull request open. Major updates are left for a person to review.
+#
+# Only Dependabot's own commits are merged this way: the pull request has to be
+# Dependabot's, the push Dependabot's, and fetch-metadata refuses a branch with
+# a commit that isn't a signed one from Dependabot. If anyone else pushes to the
+# branch, auto-merge is turned off again and the pull request waits for review.
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
 
 permissions:
   contents: write
@@ -14,7 +21,10 @@ jobs:
     name: Enable auto-merge
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'ZakisM/pka_site_backend'
+    if: >-
+      github.repository == 'ZakisM/pka_site_backend'
+      && github.event.pull_request.user.login == 'dependabot[bot]'
+      && github.actor == 'dependabot[bot]'
     steps:
       - name: Read the update's metadata
         id: metadata
@@ -22,6 +32,22 @@ jobs:
       - name: Enable auto-merge
         if: steps.metadata.outputs.update-type != 'version-update:semver-major'
         run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  disable-auto-merge:
+    name: Disable auto-merge after someone else's push
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: >-
+      github.repository == 'ZakisM/pka_site_backend'
+      && github.event.pull_request.user.login == 'dependabot[bot]'
+      && github.actor != 'dependabot[bot]'
+      && github.event.pull_request.auto_merge != null
+    steps:
+      - name: Disable auto-merge
+        run: gh pr merge --disable-auto "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
